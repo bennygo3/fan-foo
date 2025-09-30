@@ -1,0 +1,6 @@
+[
+    { "id": "1", "name": "Justin Jefferson", "position": "WR", "team": "Minnesota Vikings" },
+    { "id": "2", "name": "CeeDee Lamb", "position": "WR", "team": "Dallas Cowboys" },
+    { "id": "3", "name": "Derrick Henry", "position": "RB", "team": "Baltimore Ravens" },
+    { "id": "4", "name": "Josh Allen", "position": "QB", "team": "Buffalo Bills" }
+]
