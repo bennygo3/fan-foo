@@ -1,5 +1,5 @@
 [
-    { "name": "Justin Jefferson", "position": "WR", "team": "MIN" },
-    { "name": "Dak Prescott", "position": "QB", "team": "DAL" },
-    { "name": "Kyren Williams", "position": "RB", "team": "LAR" }
+    { "name": "Justin Jefferson", "position": "WR", "team": { "abbr": "MIN", "name": "Minnesota Vikings" } },
+    { "name": "Dak Prescott", "position": "QB", "team": { "abbr": "DAL", "name": "Dallas Cowboys" } },
+    { "name": "Kyren Williams", "position": "RB", "team": { "abbr": "LAR", "name": "Los Angeles Rams" } }
 ]

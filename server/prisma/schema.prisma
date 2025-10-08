@@ -14,12 +14,30 @@ model User {
   createdAt DateTime @default(now())
 }
 
+model Team {
+  id      Int      @id @default(autoincrement())
+  abbr    String   @unique
+  name    String
+  players Player[]
+}
+
 model Player {
   id        Int      @id @default(autoincrement())
   name      String
   position  String
-  team      String
-  createdAt DateTime @default(now())
+  teamId    Int?
+  team      Team?    @relation(fields: [teamId], references: [id])
+
+  externalId   String? 
+  externalSrc  String?
+  projPts      Float?
+  adp          Float?
+  lastSyncedAt DateTime?
+
+  @@index([name])
+  @@index([position])
+  @@index([teamId, position])
+  @@index([externalSrc, externalId])
 }
 
 

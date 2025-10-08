@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 
+import playersRouter from "./routes/players.js";
+import teamsRouter from "./routes/teams.js";
+
 const app = express();
 const prisma = new PrismaClient();
 
@@ -18,6 +21,9 @@ app.get("/users", async (req, res) => {
     const users = await prisma.user.findMany();
     res.json(users);
 });
+
+app.use("/players", playersRouter);
+app.use("/teams", teamsRouter);
 
 // Create a new user
 app.post("/users", async (req, res) => {
