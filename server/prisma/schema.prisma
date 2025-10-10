@@ -29,12 +29,13 @@ model Player {
   teamId    Int?
   team      Team?    @relation(fields: [teamId], references: [id])
 
-  externalId   String? 
+  externalId   String?  @unique
   externalSrc  String?
   projPts      Float?
   adp          Float?
   lastSyncedAt DateTime?
 
+  @@unique([name, position, teamId])
   @@index([name])
   @@index([position])
   @@index([teamId, position])

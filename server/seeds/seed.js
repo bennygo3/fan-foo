@@ -43,7 +43,7 @@ async function main() {
     // Insert players 
     await prisma.$transaction([
         prisma.player.deleteMany({}), // clear table
-        prisma.player.createMany({ data, skipDuplicates: false }),
+        prisma.player.createMany({ data, skipDuplicates: true }),
     ]);
     console.log(`Seeded ${data.length} players`);
     

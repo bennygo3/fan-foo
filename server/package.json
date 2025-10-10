@@ -11,6 +11,9 @@
     "generate": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "prisma": {
+    "seed": "node seeds/seed.js"
+  },
   "dependencies": {
     "@prisma/client": "^6.17.0",
     "cors": "^2.8.5",
