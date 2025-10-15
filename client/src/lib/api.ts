@@ -19,6 +19,9 @@ export async function getPlayers(params?: { search?: string; position?: string; 
     const res = await fetch(`${API_BASE_URL}/players${qs.size ? `?${qs}` : ""}`, {
         credentials: "include",
     });
-    if (!res.ok) throw new Error(`Get /players failed: ${res.status}`);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Get /players failed: ${res.status} ${text}`);
+    } 
     return (await res.json()) as Paginated<Player>;
 }
