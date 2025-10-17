@@ -9,6 +9,8 @@ export default function App() {
       <header style={{ display: "flex", gap: 12, marginBottom: 12 }}>
         <NavLink to="/" className={link}>Home</NavLink>
         <NavLink to="/players" className={link}>Players</NavLink>
+        <NavLink to="/Scoreboard" className={link}>Scoreboard</NavLink>
+        <NavLink to="/history" className={link}>Championships</NavLink>
       </header>
       <Outlet />
     </div>
