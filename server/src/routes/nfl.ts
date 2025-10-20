@@ -1,14 +1,16 @@
 import express, { Request, Response, NextFunction } from "express";
-import { tankGetTeams, tankGetsTeamsWithRosters } from "./services/tank-call";
-import { mapTankRostersToOffense, pickTeamRoster } from "../mappers/tank-to-domain";
+import { tankGetPlayers } from "./services/tank-call.js";
+import { mapTankPlayersToDTO } from "../mappers/tank-to-domain.js";
 
 export const nfl = express.Router();
 
-// GET /nfl/teams?season=2025
-nfl.get("/teams", async (req: Request, res: Response, next: NextFunction) => {
+// GET /nfl/players?season=2025
+nfl.get("/players", async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const season = (req.query.season as string) || "2025";
-        const raw = await tankGetTeams(season);
+        const season = (req.query.season as string) ?? "2025";
+        const search = (req.query.search as string) ?? "";
+        const position = (req.query.position as string) ?? "";
+        const teamAbv = req
         res.set("Cache-Control", "public, max-age=60");
         res.json(raw);
     } catch (e) {
