@@ -1,25 +1,18 @@
-import { http } from "../lib/http.js";
+import { http } from "../../lib/http.js";
 
-const HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+const HOST = process.env.RAPIDAPI_HOST;
 const HEADERS = {
-    "x-rapidapi-key": process.env.FANTASTYDATA_KEY,
+    "x-rapidapi-key": process.env.FANTASYDATA_KEY,
     "x-rapidapi-host": HOST,
 };
 
 // leaner call for /nfl/teams (standings)
-export async function tankGetTeams(season = "2025") {
+export async function tankGetPlayersList(season = "2025") {
     return http<any>({
-        url: `https://${HOST}/getNFLTeams`,
-        params: {
-            sortBy: "standings",
-            rosters: "false",
-            schedules: "false",
-            topPerformers: "false",
-            teamStats: "true",
-            teamStatsSeason: season,
-        },
+        url: `https://${HOST}/getNFLPlayerList`,
+        params: { season },
         headers: HEADERS,
-        timeoutMs: 10_000,
+        timeoutMs: 15_000,
     });
 }
 
