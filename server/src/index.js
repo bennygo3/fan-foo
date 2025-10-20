@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 
+import { nfl } from "./routes/nfl.js";
 import playersRouter from "./routes/players.js";
 import teamsRouter from "./routes/teams.js";
 
@@ -22,6 +23,7 @@ app.get("/users", async (req, res) => {
     res.json(users);
 });
 
+app.use("/nfl", nfl);
 app.use("/players", playersRouter);
 app.use("/teams", teamsRouter);
 
