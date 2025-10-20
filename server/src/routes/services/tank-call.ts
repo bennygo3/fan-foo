@@ -17,7 +17,7 @@ export async function tankGetPlayersList(season = "2025") {
 }
 
 // Heavier call, includes rosters with payload
-export async function tankGetsTeamsWithRosters(season = "2025") {
+export async function tankGetTeamsWithRosters(season = "2025") {
     return http<any>({
     url: `https://${HOST}/getNFLTeams`,
     params: {
