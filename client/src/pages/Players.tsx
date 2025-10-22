@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { usePlayers } from "../hooks/usePlayers";
+import { useNFLPlayers } from "../hooks/usePlayers";
 import { useDebounced } from "../hooks/useDebounced";
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
@@ -14,7 +14,7 @@ export default function Players() {
     const debouncedSearch = useDebounced(search, 300);
 
     const { data, isLoading, isError, error, isFetching, refetch } =
-    usePlayers({ search: debouncedSearch, position, page, limit });
+    useNFLPlayers({ search: debouncedSearch, position, page, limit });
 
     if (isLoading) return <p>Loading players...</p>;
     if (isError) return <p>Failed to load: {(error as Error).message}</p>;
@@ -54,9 +54,9 @@ export default function Players() {
                     <ul>
                         {items.map(p => (
                             <li key={p.id}>
-                                <strong>{p.name}</strong> - {p.position}
+                                <strong>{p.name}</strong> - {p.position} 
                                 {" • "}
-                                {p.team?.abbr ?? p.team?.name ?? (p.teamId ? `Team #${p.teamId}` : "FA")}
+                                {p.teamAbv ?? "FA"}
                             </li>
                         ))}
                     </ul>

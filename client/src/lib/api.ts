@@ -1,14 +1,23 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
 export type Player = {
-    id: string; name: string; position: string;
-    teamAbv: string | null; isFa: boolean;
-    jerseyNum?: number | null; headshot?: string | null;
+    id: string; 
+    name: string; 
+    position: string;
+    teamAbv: string | null; 
+    isFA: boolean;
+    jerseyNum?: number | null; 
+    headshot?: string | null;
 };
 
-export type Paginated<T> = { items: T[]; total?: number; page?: number; limit?: number };
+export type Paginated<T> = { 
+    items: T[]; 
+    total?: number; 
+    page?: number; 
+    limit?: number 
+};
 
-export async function getPlayers(params: {
+export async function getNFLPlayers(params: {
     season?: string;
     search?: string;
     position?: string;

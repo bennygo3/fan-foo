@@ -1,6 +1,10 @@
-import express, { Request, Response, NextFunction } from "express";
-import { tankGetPlayersList, tankGetTeamsWithRosters } from "./services/tank-call.js";
-import { PlayerDTO, mapTanksPlayersListToDTO, mapTanksRostersToPlayersDTO } from "../mappers/tank-to-domain.js";
+import express from "express";
+import type { Request, Response, NextFunction } from "express";
+
+import { tankGetPlayersList, tankGetTeamsWithRosters } from "./services/tank-call.ts";
+import { mapTanksPlayersListToDTO, mapTanksRostersToPlayersDTO } from "../mappers/tank-to-domain.ts";
+
+import type { PlayerDTO } from "../mappers/tank-to-domain.ts";
 
 export const nfl = express.Router();
 

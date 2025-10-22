@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 
-import { nfl } from "./routes/nfl.js";
+import { nfl } from "./routes/nfl.ts";
 import playersRouter from "./routes/players.js";
 import teamsRouter from "./routes/teams.js";
 

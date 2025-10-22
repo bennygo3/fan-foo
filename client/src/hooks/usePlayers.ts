@@ -1,10 +1,16 @@
 import { useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { getPlayers } from "../lib/api.ts";
+import { getNFLPlayers } from "../lib/api.ts";
 
 export function useNFLPlayers(opts: {
-    season?: string; search?: string; position?: string; teamAbv?: string;
-    freeAgents?: boolean; page?: number; limit?: number; staleTime?: number;
+    season?: string; 
+    search?: string; 
+    position?: string; 
+    teamAbv?: string;
+    freeAgents?: boolean; 
+    page?: number; 
+    limit?: number; 
+    staleTime?: number;
 }) {
     const {
         season = "2025", search = "", position = "", teamAbv = "",
@@ -25,8 +31,8 @@ export function useNFLPlayers(opts: {
     );
 
     return useQuery({
-        queryKey: ["Players", params],      // cache key
-        queryFn: () => getPlayers(params),  // fetcher
+        queryKey: ["nflPlayers", params],      // cache key
+        queryFn: () => getNFLPlayers(params),  // fetcher
         placeholderData: keepPreviousData,
         staleTime,
         refetchOnWindowFocus: false,
