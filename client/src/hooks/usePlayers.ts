@@ -14,7 +14,8 @@ export function useNFLPlayers(opts: {
 }) {
     const {
         season = "2025", search = "", position = "", teamAbv = "",
-        freeAgents = false, page = 1, limit = 25, staleTime = 5 * 60 * 1000,
+        freeAgents = false, page = 1, limit = 25, staleTime = 100 * 60 * 1000,
+        // need to switch staleTime back if in production vs testing
     } = opts;
 
     const params = useMemo(() => ({

@@ -8,7 +8,7 @@ export default function Players() {
     const [search, setSearch] = useState("");
     const [position, setPosition] = useState("");
     const [page, setPage] = useState(1);
-    const limit = 25;
+    const limit = 40;
 
     // prevents creating a unique cache entry per keystroke
     const debouncedSearch = useDebounced(search, 300);
@@ -54,6 +54,7 @@ export default function Players() {
                     <ul>
                         {items.map(p => (
                             <li key={p.id}>
+                                {p.headshot && <img src={p.headshot} alt={p.name} width={32} style={{ borderRadius: "50%", marginRight: 8 }} />}
                                 <strong>{p.name}</strong> - {p.position} 
                                 {" • "}
                                 {p.teamAbv ?? "FA"}
