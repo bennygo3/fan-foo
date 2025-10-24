@@ -8,13 +8,23 @@ export default function Players() {
     const [search, setSearch] = useState("");
     const [position, setPosition] = useState("");
     const [page, setPage] = useState(1);
+    const [week, setWeek] = useState(8);
     const limit = 40;
 
     // prevents creating a unique cache entry per keystroke
     const debouncedSearch = useDebounced(search, 300);
 
     const { data, isLoading, isError, error, isFetching, refetch } =
-    useNFLPlayers({ search: debouncedSearch, position, page, limit });
+    useNFLPlayers({ 
+        season: "2025", 
+        search: debouncedSearch, 
+        position, 
+        page, 
+        limit, 
+        sort: "proj" ,
+        week
+    
+    });
 
     if (isLoading) return <p>Loading players...</p>;
     if (isError) return <p>Failed to load: {(error as Error).message}</p>;
@@ -42,6 +52,16 @@ export default function Players() {
                     <option value="">All</option>
                     {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
+                <input
+                    type="number"
+                    min="1"
+                    max="18"
+                    value={week}
+                    onChange={(e) => { setWeek(Number(e.target.value)); setPage(1); }}
+                    style={{ width: 60 }}
+                    aria-label="NFL week number"
+                />
+
                 <button onClick={() => refetch()} disabled={isFetching}>
                     {isFetching ? "Refreshing..." : "Search"}
                 </button>
@@ -54,10 +74,17 @@ export default function Players() {
                     <ul>
                         {items.map(p => (
                             <li key={p.id}>
+                                <strong>{p.name}</strong> - {p.position} - {p.projPts} 
                                 {p.headshot && <img src={p.headshot} alt={p.name} width={32} style={{ borderRadius: "50%", marginRight: 8 }} />}
-                                <strong>{p.name}</strong> - {p.position} 
                                 {" • "}
                                 {p.teamAbv ?? "FA"}
+                                {p.projPts !== undefined && (
+                                    <>{" • "}
+                                    <span style={{ color: "#7fffd4" }}>
+                                        {p.projPts.toFixed(1)} pts
+                                    </span>
+                                    </>
+                                )}
                             </li>
                         ))}
                     </ul>

@@ -55,7 +55,37 @@ export async function tankGetPlayersList(season = "2025") {
 
 export async function tankGetProjections(opts: {
     week: number | string;
-})
+    season: string;
+    scoring?: Partial<typeof NON_PPR_SCORING>;
+}) {
+    const {week, season, scoring = {} } = opts;
+    return http<any>({
+        url: `https://${RAPID_HOST}/getNFLProjections`,
+        params: {
+            week: String(week),
+            archiveSeason: season,
+            itemFormat: "list",
+            ...NON_PPR_SCORING,
+            ...scoring,
+        },
+        headers: HEADERS as any,
+        timeoutMs: 15_000,
+    });
+}
+
+export function extractPlayerProjections(resp: any): any[] {
+    const body = resp?.body ?? resp ?? {};
+    if (Array.isArray(body.playerProjections)) return body.playerProjections;
+    if (Array.isArray(body)) return body;
+    return [];
+}
+
+export function extractDSTProjections(resp:any): any[] {
+    const body = resp?.body ?? resp ?? {};
+    if (Array.isArray(body.teamDefenseProjections)) return body.teamDefenseProjections;
+    if (Array.isArray(body)) return body;
+    return [];
+}
 
 // Heavier call, includes rosters with payload
 export async function tankGetTeamsWithRosters(season = "2025") {

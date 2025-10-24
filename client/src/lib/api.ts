@@ -8,6 +8,7 @@ export type Player = {
     isFA: boolean;
     jerseyNum?: number | null; 
     headshot?: string | null;
+    projPts?: number;
 };
 
 export type Paginated<T> = { 
@@ -25,7 +26,7 @@ export async function getNFLPlayers(params: {
     freeAgents?: boolean;
     page?: number;
     limit?: number;
-    sort?: "name" | "position" | "team";
+    sort?: "name" | "position" | "team" | "proj";
 }) {
     const url = new URL(`${API_BASE_URL}/nfl/players`);
     for (const [k, v] of Object.entries(params)) {
@@ -34,4 +35,27 @@ export async function getNFLPlayers(params: {
     const res = await fetch(url.toString(), { credentials: "include" });
     if (!res.ok) throw new Error(`GET /nfl/players failed: ${res.status}`);
     return (await res.json()) as Paginated<Player>;
+}
+
+export type DSTProjection = {
+    teamAbv: string;
+    projPts: number;
+    sacks: number;
+    interceptions: number;
+    fumbleRecoveries: number;
+    safeties: number;
+    defTD: number;
+    returnTD: number;
+    blockKick: number;
+    ptsAgainst: number;
+};
+
+export async function getDSTProjections(params: { season?: string; week?: number | string; sort?: "proj"|"team"; teamAbv?: string }) {
+    const url = new URL(`${API_BASE_URL}/nfl/dst`);
+    for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
+    }
+    const res = await fetch(url.toString(), { credentials: "include" });
+    if (!res.ok) throw new Error(`GET /nfl/dst failed ${res.status}`);
+    return await res.json(); // { items, total, week, season }
 }

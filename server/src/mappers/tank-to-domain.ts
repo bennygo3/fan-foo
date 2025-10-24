@@ -7,6 +7,7 @@ export type PlayerDTO = {
     jerseyNum?: number | null;
     age?: number | null;
     headshot?: string | null;
+    projPts?: number;
     ext?: {
         espnID?: string;
         sleeperBotID?: string;
@@ -63,7 +64,11 @@ export function mapTanksRostersToPlayersDTO(api: any): PlayerDTO[] {
                 jerseyNum: toNum(p?.jersey ?? p?.jerseyNum),
                 age: toNum(p?.age),
                 headshot: p?.headshot ?? p?.espnHeadshot ?? null,
-                ext: { espnID: p?.espnID, sleeperBotID: p?.sleeperBotID,  }
+                ext: { 
+                    espnID: p?.espnID, 
+                    sleeperBotID: p?.sleeperBotID,
+                    // yahooPlayerID: p?.yahooPlayerID,
+                },
             });
         }
     }
