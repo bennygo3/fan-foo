@@ -6,6 +6,8 @@ import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 
 import { nfl } from "./routes/nfl.ts";
+import { mockTeam } from "./routes/mock-team.ts";
+
 import playersRouter from "./routes/players.js";
 import teamsRouter from "./routes/teams.js";
 
@@ -28,6 +30,7 @@ app.get("/users", async (req, res) => {
 app.use("/nfl", nfl);
 app.use("/players", playersRouter);
 app.use("/teams", teamsRouter);
+app.use("/mock-team", mockTeam);
 
 // Create a new user
 app.post("/users", async (req, res) => {

@@ -13,7 +13,7 @@ const HEADERS = {
     "x-rapidapi-host": RAPID_HOST,
 } satisfies Record<string, string>;
 
-// Non-PPR weights
+// Non-PPR scoring
 export const NON_PPR_SCORING = {
     // universal
     twoPointConversions: 2,
@@ -31,16 +31,18 @@ export const NON_PPR_SCORING = {
     rushTD: 6,
 
     // receiving
-    pointsPerReception: 0,
-    targets: 0,
     receivingYards: 0.1,
     receivingTD: 6,
+    pointsPerReception: 0,
+    targets: 0,
 
     // kickers
     fgMade: 3,
     fgMissed: -1,
     xpMade: 1,
     xpMissed: -1,
+
+    defTd: 6,
 };
 
 // call for all nfl players (standings)
@@ -52,6 +54,31 @@ export async function tankGetPlayersList(season = "2025") {
         timeoutMs: 15_000,
     });
 }
+
+export async function tankGetWeeklySchedule(week: string | number, season: string) {
+    return http<any>({
+        url: `https://${RAPID_HOST}/getWeeklyNFLSchedule`,
+        params: { week: String(week), season: season },
+        headers: HEADERS as any,
+        timeoutMs: 10_000,
+    });
+}
+
+export async function tankGetBoxScore(gameID: string, scoring: Record<string, number> = NON_PPR_SCORING) {
+   return http<any>({
+    url: `https://${RAPIDAPI_HOST}/getNFLBoxScore`,
+    params: {
+        gameID,
+        playByPlay: "false",
+        fantasyPoints: "true",
+        itemFormat: "list",
+        ...scoring,
+    },
+    headers: HEADERS as any,
+    timeoutMs: 12_000,
+   }); 
+}
+
 
 export async function tankGetProjections(opts: {
     week: number | string;
