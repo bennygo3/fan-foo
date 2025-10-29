@@ -66,7 +66,7 @@ export async function tankGetWeeklySchedule(week: string | number, season: strin
 
 export async function tankGetBoxScore(gameID: string, scoring: Record<string, number> = NON_PPR_SCORING) {
    return http<any>({
-    url: `https://${RAPIDAPI_HOST}/getNFLBoxScore`,
+    url: `https://${RAPID_HOST}/getNFLBoxScore`,
     params: {
         gameID,
         playByPlay: "false",

@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  seed     = "node seeds/seed.js"
 }
 
 datasource db {
@@ -9,10 +8,99 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   
-  createdAt DateTime @default(now())
+  id        Int           @id @default(autoincrement())
+  email     String        @unique
+  username  String        @unique
+  teams     FantasyTeam[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model League {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique
+  settings  LeagueSettings?
+  teams     FantasyTeam[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model LeagueSettings {
+  id       Int    @id @default(autoincrement())
+  leagueId Int    @unique
+  league   League @relation(fields: [leagueId], references: [id])
+
+  // classic non-PPR defaults 
+  passYdsPerPt Float @default(0.04)
+  passTDPts    Float @default(4)
+  passIntPts   Float @default(-2)
+  rushYdsPerPt Float @default(0.1)
+  rushTDPts    Float @default(6)
+  recYdsPerPt  Float @default(0.1)
+  recTDPts     Float @default(6)
+  ppr          Float @default(0)
+  fgMadePts    Float @default(3)
+  fgMissPts    Float @default(-1)
+  xpMadePts    Float @default(1)
+  xpMissPts    Float @default(-1)
+
+  qbStarters   Int @default(1)
+  rbStarters   Int @default(2)
+  wrStarters   Int @default(2)
+  teStarters   Int @default(1)
+  flexStarters Int @default(1)
+  dstStarters  Int @default(1)
+  kStarters    Int @default(1)
+  benchSpots   Int @default(7)
+  irSpots      Int @default(1)
+}
+
+model FantasyTeam {
+  id        Int          @id @default(autoincrement())
+  name      String
+  leagueId  Int
+  league    League       @relation(fields: [leagueId], references: [id])
+  managerId Int?
+  manager   User?        @relation(fields: [managerId], references: [id])
+  slots     RosterSlot[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([leagueId, name]) // unique team name for each league
+  @@unique([leagueId, managerId]) // Managers can only have one team
+  // For free agent queries
+  @@index([leagueId, managerId])
+}
+
+enum SlotType {
+  QB
+  RB
+  WR
+  TE
+  FLEX
+  DST
+  K
+  BN
+  IR
+}
+
+model RosterSlot {
+  id        Int         @id @default(autoincrement())
+  leagueId  Int
+  teamId    Int
+  team      FantasyTeam @relation(fields: [teamId], references: [id])
+  playerId  Int
+  player    Player      @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
+  slot      SlotType
+  createdAt DateTime    @default(now())
+
+  @@unique([leagueId, playerId]) // prevents same player on two different teams in the same league
+  @@unique([teamId, playerId]) // prevents same player duplicated on same team
+  // common queries
+  @@index([teamId, slot])
+  @@index([leagueId, slot])
+  @@index([teamId, playerId])
+  @@index([playerId])
 }
 
 model Team {
@@ -23,25 +111,24 @@ model Team {
 }
 
 model Player {
-  id        Int      @id @default(autoincrement())
-  name      String
-  position  String
-  teamId    Int?
-  team      Team?    @relation(fields: [teamId], references: [id])
+  id       Int    @id @default(autoincrement())
+  name     String
+  position String
+  teamId   Int?
+  team     Team?  @relation(fields: [teamId], references: [id])
 
-  externalId   String?  @unique
+  externalId   String?      @unique
   externalSrc  String?
   projPts      Float?
   adp          Float?
   lastSyncedAt DateTime?
+  RosterSlot   RosterSlot[]
 
   @@unique([name, position, teamId])
+  @@unique([externalSrc, externalId])
   @@index([name])
   @@index([position])
   @@index([teamId, position])
-  @@index([externalSrc, externalId])
 }
 
-
 // docs: https://pris.ly/d/prisma-schema
-
