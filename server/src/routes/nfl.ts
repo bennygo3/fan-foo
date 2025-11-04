@@ -1,19 +1,21 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+
 import {
     tankGetPlayersList,
     tankGetTeamsWithRosters,
     tankGetProjections,
     extractPlayerProjections,
     extractDSTProjections,
-} from "./services/tank-call.ts";
+} from "./services/tank-call";
+
 import {
     mapTanksPlayersListToDTO,
     mapTanksRostersToPlayersDTO
-} from "../mappers/tank-to-domain.ts";
+} from "../mappers/tank-to-domain";
 
 import type { PlayerDTO } from "../mappers/tank-to-domain.ts";
-import { scoreDST } from "../scoring/dst.ts";
+import { scoreDST } from "../scoring/dst";
 
 export const nfl = express.Router();
 
@@ -119,18 +121,4 @@ nfl.get("/dst", async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
-// GET /nfl/roster/:teamAbv?season=2025
-// nfl.get("/roster/:teamAbv", async (req, res, next) => {
-//     try {
-//         const season = (req.query.season as string) || "2025";
-//         const teamAbv = req.params.teamAbv.toUpperCase();
-//         const raw = await tankGetsTeamsWithRosters(season);
-//         const dtoList = mapTankRostersToOffense(raw);
-//         const team = pickTeamRoster(dtoList, teamAbv);
-//         if (!team) return res.status(404).json({ error: `Team ${teamAbv} not found` });
-//         res.json(team);
-//     } catch (e) {
-//         next(e);
-//     }
-// });
 

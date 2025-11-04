@@ -1,4 +1,12 @@
-import { http } from "../../lib/http.js";
+import { http } from "../../lib/http"
+
+type Props = {}
+
+const tank-call = (props: Props) => {
+  return (
+    <div>tank-call</div>
+  )
+}";
 
 function reqEnv(name: string): string {
     const v = process.env[name];

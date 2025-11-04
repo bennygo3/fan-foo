@@ -1,12 +1,17 @@
-import fetch from "node-fetch";
-
-export async function http({ url, method = "GET", headers = {}, params = {}, body, timeoutMs = 10_000 }) {
+export async function http({
+    url,
+    method = "GET",
+    headers = {},
+    params = {},
+    body,
+    timeoutMs = 10_000
+}) {
     const u = new URL(url);
     for (const [k, v] of Object.entries(params || {})) {
-        if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);    
+        if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);
     }
 
-    const ctrl =  new AbortController();
+    const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
 
     try {
