@@ -1,6 +1,7 @@
 import express from "express";
-import fetch from "node-fetch";
 
 export const live = express.Router();
 
-live.get("/")
+live.get("/", async (_req, res) => {
+    res.json({ message: "Live endpoint ready (no external fetch yet" });
+});

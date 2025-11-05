@@ -1,44 +1,66 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma";
+import type { Prisma } from "@prisma/client";
 
 const router = Router();
 
 // GET /players?search
-router.get("/", async (req, res) => {
-    const {
-        search = "",
-        teamId,
-        position,
-        page = 1,
-        limit = 25,
-        sort = "name",
-        order = "asc",
-    } = req.query;
+router.get("/", async (req: Request, res: Response) => {
+    const search = typeof req.query.search === "string" ? req.query.search : "";
+    const teamId = typeof req.query.teamId === "string" ? Number(req.query.teamId) : undefined;
+    const position = typeof req.query.position === "string" ? req.query.position : undefined;
 
-    const where = {
-        AND: [
-            search ? { name: { contains: String(search), mode: "insensitive" } } : {},
-            teamId ? { teamId: Number(teamId) } : {},
-            position ? { position: String(position) } : {},
-        ],
-    };
+    const page = Math.max(1, typeof req.query.page === "string" ? Number(req.query.page) : 1);
+    const limit = Math.min(100, Math.max(1, typeof req.query.limit === "string" ? Number(req.query.limit) : 50));
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
+    // Locks sot to allowed fields to keep types happy (and to avoid injection)
+    const sortKey = ((): "name" | "position" | "teamId" => {
+        const raw = typeof req.query.sort === "string" ? req.query.sort : "name";
+        return raw === "position" ? "position" : raw === "teamId" ? "teamId" : "name";
+    })();
+
+    const dir: Prisma.SortOrder =
+        typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
+            ? "desc"
+            : "asc";
+
+    const and: Prisma.PlayerWhereInput[] = [];
+
+    if (search.trim()) {
+        and.push({
+            name: {
+                contains: search.trim(),
+                // IMPORTANT: use a literal or the enum, not String(...)
+                mode: "insensitive",
+            },
+        });
+    }
+
+    if (typeof teamId === "number" && Number.isFinite(teamId)) {
+        and.push({ teamId });
+    }
+
+    if (position && position.trim()) {
+        and.push({ position: position.trim().toUpperCase() });
+    }
+
+    const where: Prisma.PlayerWhereInput = and.length ? { AND: and } : {};
+
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    // Build orderBy with a narrow union so it remains type-safe -------->
+    const orderBy: Prisma.PlayerOrderByWithRelationInput = sortKey === "name" ? { name: dir } : sortKey === "position" ? { position: dir } : { teamId: dir };
 
     try {
         const [items, total] = await Promise.all([
             prisma.player.findMany({
-                where,
-                skip,
-                take,
-                orderBy: { [String(sort)]: order === "desc" ? "desc" : "asc" },
-                include: { team: true },
+                where, skip, take, orderBy, include: { team: true },
             }),
             prisma.player.count({ where }),
         ]);
 
-        res.json({ items, total, page: Number(page), limit: Number(limit) });
+        res.json({ items, total, page, limit });
     } catch (e) {
         console.error("GET /players failed:", e);
         res.status(500).json({ error: "failed to fetch players" });
@@ -46,10 +68,15 @@ router.get("/", async (req, res) => {
 });
 
 // GET /players/:id 
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req: Request, res: Response ) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+        return res.status(400).json({ error: "invalid player id" });
+    }
+
     try {
         const item = await prisma.player.findUnique({
-            where: { id: Number(req.params.id) },
+            where: { id },
             include: { team: true },
         });
         if (!item) return res.status(404).json({ error: "player/id not found" });
@@ -61,3 +88,16 @@ router.get("/:id", async (req, res) => {
 });
 
 export default router;
+
+// prev: id route:
+    // try {
+    //     const item = await prisma.player.findUnique({
+    //         where: { id: Number(req.params.id) },
+    //         include: { team: true },
+    //     });
+    //     if (!item) return res.status(404).json({ error: "player/id not found" });
+    //     res.json(item);
+    // } catch (e) {
+    //     console.error("GET /players/:id failed:", e);
+    //     res.status(500).json({ error: "Failed to fetch player" });
+    // }

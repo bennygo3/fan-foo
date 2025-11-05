@@ -1,13 +1,5 @@
 import { http } from "../../lib/http"
 
-type Props = {}
-
-const tank-call = (props: Props) => {
-  return (
-    <div>tank-call</div>
-  )
-}";
-
 function reqEnv(name: string): string {
     const v = process.env[name];
     if (!v) throw new Error(`Missing required env: ${name}`);
@@ -16,6 +8,7 @@ function reqEnv(name: string): string {
 
 const RAPID_KEY = reqEnv("RAPIDAPI_KEY");
 const RAPID_HOST = reqEnv("RAPIDAPI_HOST");
+
 const HEADERS = {
     "x-rapidapi-key": RAPID_KEY,
     "x-rapidapi-host": RAPID_HOST,
@@ -51,7 +44,7 @@ export const NON_PPR_SCORING = {
     xpMissed: -1,
 
     defTd: 6,
-};
+} satisfies Record<string, number>;
 
 // call for all nfl players (standings)
 export async function tankGetPlayersList(season = "2025") {
@@ -134,7 +127,7 @@ export async function tankGetTeamsWithRosters(season = "2025") {
             teamStats: "false",
             teamStatsSeason: season,
         },
-        headers: HEADERS as any,
+        headers: HEADERS,
         timeoutMs: 15_000,
     });
 }
