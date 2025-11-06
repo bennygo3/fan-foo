@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getNFLPlayers } from "../lib/api";
 
+type SortKey = "name" | "position" | "team" | "proj";
+
 export function useNFLPlayers(opts: {
     season?: string; 
     week?: number | string;
@@ -11,7 +13,8 @@ export function useNFLPlayers(opts: {
     freeAgents?: boolean; 
     page?: number; 
     limit?: number; 
-    sort?: "name" | "position" | "team" | "proj";
+    sort?: SortKey;
+    leagueId?: number;
     staleTime?: number;
 }) {
     const {
@@ -23,9 +26,9 @@ export function useNFLPlayers(opts: {
         freeAgents = false, 
         page = 1, 
         limit = 40, 
-        sort = "name",
-        staleTime = 100 * 60 * 1000,
-        // need to switch staleTime back if in production vs testing
+        sort = "proj",
+        leagueId,
+        staleTime = 60 * 60 * 1000, // need to switch staleTime back if in production vs testing
     } = opts;
 
     const params = useMemo(() => ({
@@ -38,8 +41,9 @@ export function useNFLPlayers(opts: {
         page,
         limit,
         sort,
+        leagueId,
     }),
-        [season, week, search, position, teamAbv, freeAgents, page, limit, sort]
+        [season, week, search, position, teamAbv, freeAgents, page, limit, sort, leagueId]
     );
 
     return useQuery({

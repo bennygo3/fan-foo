@@ -1,5 +1,11 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
+export type ManagedBy = {
+    managerId: number;
+    managerTeamName: string;
+    managerName: string;
+} | null; 
+
 export type Player = {
     id: string; 
     name: string; 
@@ -9,6 +15,10 @@ export type Player = {
     jerseyNum?: number | null; 
     headshot?: string | null;
     projPts?: number;
+    oppAbv?: string | null;
+    kickoffIso?: string | null;
+    managedBy?: ManagedBy;
+    available?: boolean;
 };
 
 export type Paginated<T> = { 
@@ -19,7 +29,9 @@ export type Paginated<T> = {
 };
 
 export async function getNFLPlayers(params: {
+    leagueId?: number | string;
     season?: string;
+    week?: number | string;   // only needed when sorted by "proj"
     search?: string;
     position?: string;
     teamAbv?: string;
@@ -50,12 +62,17 @@ export type DSTProjection = {
     ptsAgainst: number;
 };
 
-export async function getDSTProjections(params: { season?: string; week?: number | string; sort?: "proj"|"team"; teamAbv?: string }) {
+export async function getDSTProjections(params: { 
+    season?: string; 
+    week?: number | string; 
+    sort?: "proj"|"team"; 
+    teamAbv?: string 
+}) {
     const url = new URL(`${API_BASE_URL}/nfl/dst`);
     for (const [k, v] of Object.entries(params)) {
         if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     }
     const res = await fetch(url.toString(), { credentials: "include" });
     if (!res.ok) throw new Error(`GET /nfl/dst failed ${res.status}`);
-    return await res.json(); // { items, total, week, season }
+    return await res.json() as { items: DSTProjection[]; total?: number; week?: number; season?: string };
 }
