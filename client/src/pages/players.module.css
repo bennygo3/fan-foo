@@ -1,0 +1,4 @@
+.playersContainer {
+    display: grid;
+    gap: 15px;
+}

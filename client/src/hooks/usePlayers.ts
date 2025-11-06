@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { getNFLPlayers } from "../lib/api.ts";
+import { getNFLPlayers } from "../lib/api";
 
 export function useNFLPlayers(opts: {
     season?: string; 
@@ -37,7 +37,7 @@ export function useNFLPlayers(opts: {
         freeAgents,
         page,
         limit,
-        sort: "name" as const,
+        sort,
     }),
         [season, week, search, position, teamAbv, freeAgents, page, limit, sort]
     );
