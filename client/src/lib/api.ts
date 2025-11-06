@@ -25,7 +25,9 @@ export type Paginated<T> = {
     items: T[]; 
     total?: number; 
     page?: number; 
-    limit?: number 
+    limit?: number;
+    week?: number;
+    season?: string;
 };
 
 export async function getNFLPlayers(params: {

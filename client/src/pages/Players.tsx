@@ -4,7 +4,7 @@ import { useNFLPlayers } from "../hooks/usePlayers";
 import { useDebounced } from "../hooks/useDebounced";
 
 const LEAGUE_ID = 1; // can adjust later if app expands to designate actual league id number
-
+const TEAM_ID = 1;
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
@@ -13,7 +13,7 @@ export default function Players() {
     const [position, setPosition] = useState("");
     const [page, setPage] = useState(1);
     const [week, setWeek] = useState<number | string>("");
-
+    
     const limit = 50;
     // prevents creating a unique cache entry per keystroke
     const debouncedSearch = useDebounced(search, 300);
@@ -34,6 +34,8 @@ export default function Players() {
     const items = data?.items ?? [];
     const total = data?.total ?? items.length;
     const pageCount = Math.max(1, Math.ceil(total / limit));
+    const serverWeek = data?.week;
+    const serverSeason = data?.season;
 
     const headerNote = useMemo(
         () => (isFetching ? "(refreshing...)" : ""),
@@ -57,10 +59,22 @@ export default function Players() {
         }
     }
 
-    function handleAdd(playerId: string) {
-        // TODO: wire to POST /leagues/.../:teamId/add
-        console.log("Add player", playerId, "to my roster");
-    }
+    const onAdd = async (playerId: string) => {
+        try {
+            // TODO: make TEAM_ID dynamic (user's chosen team)
+            const res = await fetch(`/leagues/${LEAGUE_ID}/teams/${TEAM_ID}/roster`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ playerId, slot: "BN" }),
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error(await res.text());
+            refetch();
+        } catch (e) {
+            console.error("Add failed", e);
+            alert("Could not add player.");
+        }
+    };
 
     if (isLoading) return <p className={styles.state}>Loading players...</p>;
     if (isError) return <p className={styles.state}>Failed to load: {(error as Error).message}</p>;
@@ -69,7 +83,9 @@ export default function Players() {
         <div className={styles.playersContainer}>
             <div className={styles.playersHeaderRow}>
                 <h2 className={styles.playersHeader}>
-                    Players {headerNote}
+                    Players {headerNote}{" "}
+                    {serverWeek ? <span className={styles.subtle}>• Week {serverWeek}</span> : null}
+                    {serverSeason ? <span className={styles.subtle}> • {serverSeason}</span> : null}
                 </h2>
 
                 {/* Filters / search bar */}
@@ -167,7 +183,7 @@ export default function Players() {
                                 ) : p.available ? (
                                     <button
                                         className={styles.addBtn}
-                                        onClick={(() => handleAdd(p.id))}
+                                        onClick={(() => onAdd(p.id))}
                                         title="Add to my team"
                                     > + </button>
                                 ) : (
