@@ -1,5 +1,285 @@
+:root {
+    --bg: #1b1d22;
+    --bg-elev: #000000;
+    --bg-elev-2: #2a2e37;
+    --text: #e7eaf0;
+    --text-dim: #a8b0bf;
+    --muted: #8c93a3;
+    --accent: #7fbfff;
+    --accent-2: #b084ff;
+    --good: #7fffd4;
+    --bad: #ff8b8b;
+    --ring: #3a8cff66;
+    --border: #343a46;
+    --chip: #2f3541;
+}
 .playersContainer {
     display: grid;
     gap: 15px;
+    padding: 16px;
+    color: var(--text);
+    background: var(--bg);
+}
+
+.state {
+    padding: 16px;
+    color: var(--text-dim);
+}
+
+.playersHeaderRow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 12px;
+}
+
+.playersHeader {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.subtle {
+    margin-left: 8px;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
+.playersControls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.playersSearchInput {
+    min-width: 220px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    outline: none;
+}
+
+.playersSearchInput:focus {
+    border-color: var(--accent);
+    box-shadow: 000 3px var(--ring);
+}
+
+.playersSelectPosition,
+.playersSelectWeek {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+}
+
+.playersSearchButton {
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev-2);
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.playersSearchButton:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.playersSearchButton:not(:disabled):hover {
+    background: var(--chip);
+}
+
+.playersMetaRow {
+    display: flex;
+    gap: 16px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+}
+
+.table {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: visible;
+    /* overflow: scroll; */
+    background: var(--bg-elev);
+}
+
+.thead {
+    display: grid;
+    grid-template-columns: 1.5fr 0.6fr 0.8fr 0.8fr 0.6fr 0.7fr;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-elev-2);
+    color: var(--text-dim);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+}
+
+.tbody {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1.5fr 0.6fr 0.8fr 0.8fr 0.6fr 0.7fr;
+    gap: 12px;
+    padding: 12px 14px;
+    align-items: center;
+    border-top: 1px solid var(--border);
+}
+
+.row:hover {
+    background: #2b2f39;
+}
+
+/* .colPlayer { }
+.colPos { }
+.colTeam { }
+.colOpp { }
+.colProj { }
+.colAction { } */
+
+.right { text-align: right; }
+.center { text-align: center; }
+
+.playerCell {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+}
+
+.headshot {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: #111;
+    padding-right: 1px;
+}
+
+.headshotFallback {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--chip);
+    border: 1px solid var(--border);
+}
+
+.name {
+    font-weight: 700;
+    line-height: 1.2;
+    overflow: hidden;
+    /* overflow: scroll; */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.subline {
+    font-size: 0.86rem;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.claimNote {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: var(--accent-2);
+}
+
+.playerProjPts {
+    font-weight: 700;
+    color: var(--good);
+}
+
+.playersProjNA {
+    color: var(--muted);
+}
+
+.addBtn {
+    width: 34px;
+    height: 28px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev-2);
+    color: var(--text);
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.addBtn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.addBtn:not(:disabled):hover {
+    background: var(--chip);
+}
+
+.empty {
+    padding: 18px;
+    text-align: center;
+    color: var(--text-dim);
+}
+
+.playersPager {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    padding-top: 6px; 
+}
+
+.playersPageButton,
+.playersPageBtn {
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--text);
+    cursor: pointer;
+}
+
+.playersPageButton:disabled,
+.playersPageBtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.playerPageInfo {
+    color: var(--text-dim);
+}
+
+@media (max-width: 560px) {
+    .thead,
+    .row {
+        grid-template-columns: 1.5fr 0.7fr 0.7fr 0.7fr;
+    }
+    .colTeam, .colOpp {
+        display: none;
+    }
+    .row > :nth-child(3), /*Team*/
+    .row > :nth-child(4) { /*Opp*/
+        display: none;
+    }
+    .row > :nth-child(3),
+    .row > :nth-child(4) {
+        display: none;
+    }
 }
 

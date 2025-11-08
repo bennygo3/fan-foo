@@ -4,7 +4,7 @@ import { useNFLPlayers } from "../hooks/usePlayers";
 import { useDebounced } from "../hooks/useDebounced";
 
 const LEAGUE_ID = 1; // can adjust later if app expands to designate actual league id number
-const TEAM_ID = 1;
+const TEAM_ID = 1; // TODO: make dynamic
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
@@ -13,10 +13,9 @@ export default function Players() {
     const [position, setPosition] = useState("");
     const [page, setPage] = useState(1);
     const [week, setWeek] = useState<number | string>("");
-    
+
     const limit = 50;
-    // prevents creating a unique cache entry per keystroke
-    const debouncedSearch = useDebounced(search, 300);
+    const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
 
     const { data, isLoading, isError, error, isFetching, refetch } =
         useNFLPlayers({
@@ -34,13 +33,10 @@ export default function Players() {
     const items = data?.items ?? [];
     const total = data?.total ?? items.length;
     const pageCount = Math.max(1, Math.ceil(total / limit));
-    const serverWeek = data?.week;
-    const serverSeason = data?.season;
+    const serverWeek = (data as any)?.week;
+    const serverSeason = (data as any)?.season;
 
-    const headerNote = useMemo(
-        () => (isFetching ? "(refreshing...)" : ""),
-        [isFetching]
-    );
+    const headerNote = useMemo(() => (isFetching ? "(refreshing...)" : ""), [isFetching]);
 
     function fmtKickoff(iso?: string | null) {
         if (!iso) return "TBD";
@@ -101,7 +97,10 @@ export default function Players() {
                     <select
                         className={styles.playersSelectPosition}
                         value={position}
-                        onChange={(e) => { setPosition(e.target.value); setPage(1); }}
+                        onChange={(e) => {
+                            setPosition(e.target.value);
+                            setPage(1);
+                        }}
                         aria-label="Filter by position"
                     >
                         <option value="">All</option>
@@ -113,7 +112,10 @@ export default function Players() {
                     <select
                         className={styles.playersSelectWeek}
                         value={String(week)}
-                        onChange={(e) => { setWeek(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }}
+                        onChange={(e) => {
+                            setWeek(e.target.value === "" ? "" : Number(e.target.value));
+                            setPage(1);
+                        }}
                         aria-label="NFL week"
                     >
                         <option value="">Current Week</option>
@@ -122,11 +124,7 @@ export default function Players() {
                         ))}
                     </select>
 
-                    <button
-                        onClick={() => refetch()}
-                        disabled={isFetching}
-                        className={styles.playersSearchButton}
-                    >
+                    <button onClick={() => refetch()} disabled={isFetching} className={styles.playersSearchButton}>
                         {isFetching ? "Play call incoming..." : "Search"}
                     </button>
                 </div>
@@ -137,63 +135,68 @@ export default function Players() {
                 <span>Page {page} / {pageCount}</span>
             </div>
 
-            {items.length === 0 ? (
-                <p className={styles.playersState}>🧐 No players found</p>
-            ) : (
-                <ul className={styles.playersGrid}>
-                    {items.map((p) => (
-                        <li key={p.id} className={styles.playersCard}>
-                            <div className={styles.playersCardTop}>
-                                {p.headshot ? (
-                                    <img className={styles.headshot} src={p.headshot} alt={p.name} />
-                                ) : (
-                                    <div className={styles.headshotFallback}>{p.position}</div>
-                                )}
-                                <div className={styles.playersIndent}>
-                                    <div className={styles.playersNameRow}>
-                                        <strong className={styles.playersName}>{p.name}</strong>
-                                        <span className={styles.posTeam}>
-                                            {p.position} • {p.teamAbv ?? "FA"}
-                                        </span>
-                                    </div>
-                                    <div className={styles.playersOppRow}>
-                                        <span className={styles.playersOppBadge}>
-                                            {p.oppAbv ? `vs ${p.oppAbv}` : "--"}
-                                        </span>
-                                        <span className={styles.playersKickoff}>
-                                            {fmtKickoff(p.kickoffIso)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className={styles.playersProj}>
-                                    {typeof p.projPts === "number" ? (
-                                    <span className={styles.playerProjPts}>{p.projPts.toFixed(1)} pts</span>
+            {/* Table view with Header Row */}
+            <div className={styles.table}>
+                <div className={styles.thead}>
+                    <div className={styles.colPlayer}>Player</div>
+                    <div className={styles.colPos}>Pos</div>
+                    <div className={styles.colTeam}>Team</div>
+                    <div className={styles.colOpp}>Opp</div>
+                    <div className={`${styles.colProj} ${styles.right}`}>Proj</div>
+                    <div className={`${styles.colAction} ${styles.center}`}>Action</div>
+                </div>
+
+                {items.length === 0 ? (
+                    <div className={styles.playersState}>🧐 No players found</div>
+                ) : (
+                    <ul className={styles.tbody}>
+                        {items.map((p) => (
+                            <li key={p.id} className={styles.row}>
+                                <div className={styles.playerCell}>
+                                    {p.headshot ? (
+                                        <img src={p.headshot} alt={p.name} width={50} height={50} className={styles.headshot} />
                                     ) : (
-                                    <span className={styles.playersProjNA}>-</span>
+                                        <div className={styles.headshotFallback}>{p.position}</div>
                                     )}
+                                    <div>
+                                        <div className={styles.name}>{p.name}</div>
+                                        <div className={styles.subline}>
+                                            {p.oppAbv ? `vs ${p.oppAbv}` : "-"} · {fmtKickoff(p.kickoffIso)}
+                                        </div>
+                                        {!p.available && p.managedBy ? (
+                                            <div className={styles.claimNote}>
+                                                {p.managedBy.managerTeamName} ({p.managedBy.managerName})
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div className={styles.playersCardBottom}>
-                                {p.managedBy ? (
-                                    <span className={styles.playersOwnedBadge}>
-                                        {p.managedBy.managerTeamName}
-                                        <span className={styles.managerNote}>({p.managedBy.managerName})</span>
-                                    </span>
-                                ) : p.available ? (
+
+                                <div>{p.position}</div>
+                                <div>{p.teamAbv ?? "FA"}</div>
+                                <div>{p.oppAbv ?? "-"}</div>
+
+                                <div className={styles.right}>
+                                    {typeof p.projPts === "number" ? p.projPts.toFixed(1) : "-"}
+                                </div>
+
+                                {/* Action: add */}
+                                <div className={styles.center}>
                                     <button
                                         className={styles.addBtn}
-                                        onClick={(() => onAdd(p.id))}
-                                        title="Add to my team"
-                                    > + </button>
-                                ) : (
-                                    <span className={styles.faNote}>Unavailable</span>
-                                )}
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
+                                        disabled={!p.available}
+                                        onClick={() => onAdd(p.id)}
+                                        title={p.available ? "Add" : "Already owned"}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+
+            {/* Pagination */}
             <div className={styles.playersPager}>
                 <button
                     className={styles.playersPageButton}
@@ -213,5 +216,4 @@ export default function Players() {
             </div>
         </div>
     );
-
 }
