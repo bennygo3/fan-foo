@@ -19,6 +19,8 @@
     padding: 16px;
     color: var(--text);
     background: var(--bg);
+    width: 100%;
+    max-width: none;
 }
 
 .state {
