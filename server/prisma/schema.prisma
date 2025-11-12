@@ -108,6 +108,9 @@ model Team {
   abbr    String   @unique
   name    String
   players Player[]
+
+  homeGames Game[] @relation("homeTeam")
+  awayGames Game[] @relation("awayTeam")
 }
 
 model Player {
@@ -129,6 +132,30 @@ model Player {
   @@index([name])
   @@index([position])
   @@index([teamId, position])
+}
+
+model Game {
+  id        Int      @id @default(autoincrement())
+  season    Int
+  week      Int
+  startTime DateTime
+  venue     String?
+  status    String   @default("scheduled")
+  isFlexed  Boolean  @default(false)
+
+  // External mapping for Tank/ESPN/etc.
+  externalGameId String? @unique
+  externalSrc    String?
+
+  // Relations to existing Team Model
+  homeTeamId Int
+  awayTeamId Int
+  homeTeam   Team @relation("homeTeam", fields: [homeTeamId], references: [id])
+  awayTeam   Team @relation("awayTeam", fields: [awayTeamId], references: [id])
+
+  // Prevent dupes when re-seeding
+  @@unique([season, week, homeTeamId, awayTeamId, startTime])
+  @@index([season, week])
 }
 
 // docs: https://pris.ly/d/prisma-schema
