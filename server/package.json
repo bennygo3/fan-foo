@@ -12,7 +12,7 @@
     "generate": "prisma generate"
   },
   "prisma": {
-    "seed": "tsx seeds/seed-league.ts"
+    "seed": "tsx src/seeds/seed-league.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.17.0",
