@@ -126,8 +126,10 @@ model Player {
   adp          Float?
   lastSyncedAt DateTime?
   RosterSlot   RosterSlot[]
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  @@unique([name, position, teamId])
   @@unique([externalSrc, externalId])
   @@index([name])
   @@index([position])
@@ -138,7 +140,7 @@ model Game {
   id        Int      @id @default(autoincrement())
   season    Int
   week      Int
-  startTime DateTime
+  startTime DateTime? //optional for null
   venue     String?
   status    String   @default("scheduled")
   isFlexed  Boolean  @default(false)

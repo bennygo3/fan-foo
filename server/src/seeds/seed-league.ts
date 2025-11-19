@@ -1,7 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
+import schedule2025 from "./nfl-schedule-2025.json" assert { type: "json" };
+
 const prisma = new PrismaClient();
 
-async function leagueMain() {
+type GameSeed = {
+    week: number;
+    season: number;
+    away: string;
+    home: string;
+    timeET: string | null;
+    localTime: string | null;
+    startTime: string | null;
+}
+
+async function seedLeague() {
     // const COMMISH_EMAIL: string = process.env.SEED_COMMISH_EMAIL ?? "commish@example.com";
     const COMMISH_EMAIL = (process.env.SEED_COMMISH_EMAIL ?? "commish@example.com") as string;
     const COMMISH_USERNAME = COMMISH_EMAIL.split("@")[0]!;
@@ -56,11 +68,87 @@ async function leagueMain() {
     `);
 }
 
-leagueMain()
-    .catch((e) => {
-        console.error("Seed failed:", e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
+async function seedTeamsAndGames() {
+    console.log("🌱 Seeding NFL Teams and Games...");
+
+    const games = schedule2025 as GameSeed[];
+
+    const abbrs = Array.from(
+        new Set(games.flatMap((g) => [g.away, g.home]))
+    );
+
+    // Upsert Teams by abbr
+    const teams = await prisma.$transaction(
+        abbrs.map((abbr) => 
+            prisma.team.upsert({
+                where: { abbr },
+                update: {},
+                create: {
+                    abbr,
+                    name: abbr, // can be changed later to full team name
+                },
+            })
+        )
+    );
+
+    const teamByAbbr = new Map(teams.map((t) => [t.abbr, t.id]));
+
+    // Clear potential existing 2025 games to prevent duplicates
+    await prisma.game.deleteMany({
+        where: { season: 2025 },
     });
+
+    // Build rows and validate startTime prior to hitting Prisma
+    const gameRows = [];
+
+    for (const g of games) {
+        const awayTeamId = teamByAbbr.get(g.away);
+        const homeTeamId = teamByAbbr.get(g.home);
+
+        if (!homeTeamId || !awayTeamId) {
+            throw new Error(`Unknown team abbr in schedule: ${g.away} vs ${g.home}`);
+        }
+
+        const base = {
+            season: g.season,
+            week: g.week,
+            awayTeamId,
+            homeTeamId,
+        } as any;
+
+        if (g.startTime) {
+            const d = new Date(g.startTime);
+
+            if (Number.isNaN(d.getTime())) {
+                console.error("🚨 Invalid startTime in schedule JSON:");
+                console.error(" raw startTime:", g.startTime);
+                console.error(
+                    ` game: season=${g.season}, week=${g.week}, ${g.away} @ ${g.home}`
+                );
+            }
+
+            base.startTime = d;
+        }
+
+        gameRows.push(base);
+    }
+    
+    // Insert all of the games
+    await prisma.game.createMany({
+        data: gameRows,
+        skipDuplicates: true,
+    });
+    console.log(`✅ Seeded ${teams.length} teams and ${gameRows.length} games`);
+}
+
+async function main() {
+    await seedLeague();
+    await seedTeamsAndGames();
+}
+
+main().catch((e) => {
+    console.error("seed failed:", e);
+    process.exit(1);
+}).finally(async () => {
+    await prisma.$disconnect();
+});
