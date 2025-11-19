@@ -11,6 +11,7 @@ model User {
   id        Int           @id @default(autoincrement())
   email     String        @unique
   username  String        @unique
+  isAdmin   Boolean       @default(false)
   teams     FantasyTeam[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -89,8 +90,8 @@ model RosterSlot {
   leagueId  Int
   teamId    Int
   team      FantasyTeam @relation(fields: [teamId], references: [id])
-  playerId  Int
-  player    Player      @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
+  playerId  Int?
+  player    Player?      @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
   slot      SlotType
   createdAt DateTime    @default(now())
 

@@ -13,26 +13,25 @@ type GameSeed = {
     startTime: string | null;
 }
 
-async function seedLeague() {
-    // const COMMISH_EMAIL: string = process.env.SEED_COMMISH_EMAIL ?? "commish@example.com";
-    const COMMISH_EMAIL = (process.env.SEED_COMMISH_EMAIL ?? "commish@example.com") as string;
-    const COMMISH_USERNAME = COMMISH_EMAIL.split("@")[0]!;
-    const LEAGUE_NAME: string = process.env.SEED_LEAGUE_NAME ?? "Forever Unclean (2025)";
-
-    const TEAM_NAMES: string[] = [
-        "Rippin' Darts", "Lovullo For Prez", "The Dude Abides", "Snortin' Addis-on",
-        "OMARION COMIN' YO!", "Lou Holtz", "BIG TRUZZ", "Achane Reaction",
-        "THE CHAMP", "Skatt-Cat-ebo", "The Grave Digger", "Ricky's Rolex no TikTok",
+    const TEAM_MANAGERS = [
+        { teamName: "Rippin' Darts", email: "jKarg@example.com", username: "JKarg"},
+        { teamName: "Lovullo For Prez", email: "sheaNo@example.com", username: "SheaNo" },
+        { teamName: "The Dude Abides", email: "milesMc@example.com", username: "MilesMc" },
+        { teamName: "Snortin' Addis-on", email: "KevG@example.com", username: "KevG" },
+        { teamName: "OMARION COMIN' YO!", email: "AndyMc@example.com", username: "AndyMc" },
+        { teamName: "Lou Holtz", email: "BenG@example.com", username: "BenG" },
+        { teamName: "BIG TRUZZ", email: "SpenceMc@example.com", username: "SpenceMc" },
+        { teamName: "Achane Reaction", email: "AlSpi@example.com", username: "AlSpi" },
+        { teamName: "THE CHAMP", email: "MattH@example.com", username: "MattH" },
+        { teamName: "Skatt-Cat-ebo", email: "kNo@example.com", username: "KNo" },
+        { teamName: "The Grave Digger", email: "bScho@example.com", username: "BScho" },
+        { teamName: "Ricky's Rolex no TikTok", email: "cLew@example.com", username: "CLew" },
     ];
 
-    console.log("🌱 Seeding league, settings, teams...");
+async function seedLeague() {
+    const LEAGUE_NAME = "Forever Unclean";
 
-    // Commissioner user (global unique on email/username)
-    const commish = await prisma.user.upsert({
-        where: { email: COMMISH_EMAIL },
-        update: { username: COMMISH_USERNAME },
-        create: { email: COMMISH_EMAIL, username: COMMISH_USERNAME },
-    });
+    console.log("🌱 Seeding league, settings, teams...");
 
     // League (unique name)
     const league = await prisma.league.upsert({
@@ -48,23 +47,55 @@ async function seedLeague() {
         create: { leagueId: league.id },
     });
 
-    // fantasy teams, assign the commish to Team 1
-    for (const [idx, name] of TEAM_NAMES.entries()) {
-        await prisma.fantasyTeam.upsert({
-            where: { leagueId_name: { leagueId: league.id, name } },
-            update: idx === 0 ? { managerId: commish.id } : {},
+    const usersByTeamName = new Map<string, { id: number; email: string; username: string }>();
+
+    for (const mgr of TEAM_MANAGERS) {
+        const user = await prisma.user.upsert({
+            where: { email: mgr.email },
+            update: { username: mgr.username },
             create: {
-                name,
+                email: mgr.email,
+                username: mgr.username,
+            },
+        });
+
+        usersByTeamName.set(mgr.teamName, {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+        });
+    }
+
+    for (const mgr of TEAM_MANAGERS) {
+        const u = usersByTeamName.get(mgr.teamName);
+        if(!u) {
+            throw new Error(`No user found for team ${mgr.teamName}`);
+        }
+
+        await prisma.fantasyTeam.upsert({
+            where: {
+                leagueId_name: {
+                    leagueId: league.id,
+                    name: mgr.teamName,
+                },
+            },
+            update: {
+                managerId: u.id,
+            },
+            create: {
+                name: mgr.teamName,
                 leagueId: league.id,
-                managerId: idx === 0 ? commish.id : null,
+                managerId: u.id,
             },
         });
     }
 
     console.log(`✅ Seeded: 
-        - Commissioner: ${commish.email} (id=${commish.id})
         - League: ${league.name} (id=${league.id})
-        - Teams: ${TEAM_NAMES.length} (Team #1 managed by ${commish.username})
+        - Teams: ${TEAM_MANAGERS.length})
+        - Managers: ${TEAM_MANAGERS.map((t) => t.username).join(", ")}
+        - Commissioner: "The Grave Digger" (BScho)
+
     `);
 }
 
