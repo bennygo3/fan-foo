@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { getNFLPlayers } from "../lib/api";
+import { getPlayerPool } from "../lib/api";
 
 type SortKey = "name" | "position" | "team" | "proj";
 
 export function useNFLPlayers(opts: {
+    leagueId: number;
     season?: string; 
     week?: number | string;
     search?: string; 
@@ -14,10 +15,10 @@ export function useNFLPlayers(opts: {
     page?: number; 
     limit?: number; 
     sort?: SortKey;
-    leagueId?: number;
     staleTime?: number;
 }) {
     const {
+        leagueId,
         season = "2025", 
         week,
         search = "", 
@@ -27,7 +28,6 @@ export function useNFLPlayers(opts: {
         page = 1, 
         limit = 40, 
         sort = "proj",
-        leagueId,
         staleTime = 60 * 60 * 1000, // need to switch staleTime back if in production vs testing
     } = opts;
 
@@ -48,7 +48,7 @@ export function useNFLPlayers(opts: {
 
     return useQuery({
         queryKey: ["nflPlayers", params],      // cache key
-        queryFn: () => getNFLPlayers(params),  // fetcher
+        queryFn: () => getPlayerPool(params),  // fetcher
         placeholderData: keepPreviousData,
         staleTime,
         refetchOnWindowFocus: false,

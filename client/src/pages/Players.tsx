@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import styles from './players.module.css';
 import { useNFLPlayers } from "../hooks/usePlayers";
 import { useDebounced } from "../hooks/useDebounced";
+import { addPlayerToRoster } from "../lib/api";
 
 const LEAGUE_ID = 1; // can adjust later if app expands to designate actual league id number
-const TEAM_ID = 1; // TODO: make dynamic
+const TEAM_ID = 6; // TODO: make dynamic
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
@@ -55,16 +56,14 @@ export default function Players() {
         }
     }
 
-    const onAdd = async (playerId: string) => {
+    const onAdd = async (playerId: number) => {
         try {
-            // TODO: make TEAM_ID dynamic (user's chosen team)
-            const res = await fetch(`/leagues/${LEAGUE_ID}/teams/${TEAM_ID}/roster`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ playerId, slot: "BN" }),
-                credentials: "include",
+            await addPlayerToRoster({
+                leagueId: LEAGUE_ID,
+                teamId: TEAM_ID,
+                playerId,
+                slot: "BN",
             });
-            if (!res.ok) throw new Error(await res.text());
             refetch();
         } catch (e) {
             console.error("Add failed", e);
@@ -183,9 +182,9 @@ export default function Players() {
                                 <div className={styles.center}>
                                     <button
                                         className={styles.addBtn}
-                                        disabled={!p.available}
+                                        disabled={p.available === false}
                                         onClick={() => onAdd(p.id)}
-                                        title={p.available ? "Add" : "Already owned"}
+                                        title={p.available === false ? "Add" : "Already owned"}
                                     >
                                         +
                                     </button>

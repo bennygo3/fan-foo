@@ -7,6 +7,7 @@ import { queryClient } from "./lib/query-client.ts"
 import App from "./App"
 import Home from "./pages/Home.tsx"
 import Players from "./pages/Players.tsx"
+import MyTeamPage from "./pages/MyTeam.tsx"
 import "./index.css"
 
 const router = createBrowserRouter([
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <Home /> },
             { path: "players", element: <Players /> },
+            { path: "league/:leagueId/team/:teamId", element: <MyTeamPage /> },
         ],
     },
 ])

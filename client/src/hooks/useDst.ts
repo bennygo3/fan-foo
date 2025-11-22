@@ -1,5 +1,5 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { getDSTProjections, type DSTProjection } from "../lib/api";
+import { getDSTProjections, type DSTProjections } from "../lib/api";
 
 type DSTParams = {
     season?: string;
@@ -9,7 +9,7 @@ type DSTParams = {
 }
 
 type DSTResponse = {
-    items: DSTProjection[];
+    items: DSTProjections[];
     total?: number;
     week?: number;
     season?: string;

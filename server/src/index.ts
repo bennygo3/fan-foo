@@ -8,6 +8,7 @@ import cors from "cors";
 import { prisma } from "./lib/prisma"
 import { nfl } from "./routes/nfl";
 import { leagueRouter } from "./routes/league";
+import { rostersRouter } from "./routes/rosters";
 import scheduleRouter from "./routes/schedule";
 
 // import { mockTeam } from "./routes/services/mock-team";
@@ -39,6 +40,7 @@ app.use("/leagues", leagueRouter);
 app.use("/players", playersRouter);
 app.use("/teams", teamsRouter);
 app.use("/api", scheduleRouter);
+app.use("/leagues", rostersRouter);
 // app.use("/mock-team", mockTeam);
 
 // Create a new user
