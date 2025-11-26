@@ -2,6 +2,8 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
 import type { SlotType, Prisma } from "@prisma/client";
+import { getCurrentSeasonWeek } from "./services/current-week";
+import { tankGetProjections, extractPlayerProjections } from "./services/tank-call";
 
 export const leagueRouter = express.Router();
 
@@ -93,25 +95,30 @@ leagueRouter.get(
     "/:leagueId/player-pool",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-
             const leagueId = Number(req.params.leagueId);
-
             if (!Number.isFinite(leagueId)) {
                 return res.status(400).json({ error: "Invalid leagueId" });
             }
 
             // filters
-            const search = typeof req.query.search === "string"
-                ? req.query.search.trim()
-                : "";
+            const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+            const position = typeof req.query.position === "string" ? req.query.position.trim().toUpperCase() : undefined;
+            const teamAbv = typeof req.query.teamAbv === "string" ? req.query.teamAbv.trim().toUpperCase() : undefined;
 
-            const position = typeof req.query.position === "string"
-                ? req.query.position.trim().toUpperCase()
-                : undefined;
+            const seasonParam = typeof req.query.season === "string" ? req.query.season : undefined;
+            const weekParamRaw = typeof req.query.week === "string" ? req.query.week : undefined;
 
-            const teamAbbr = typeof req.query.teamAbv === "string"
-                ? req.query.teamAbv.trim().toUpperCase()
-                : undefined;
+            let season: number;
+            let week: number;
+
+            if (seasonParam && weekParamRaw) {
+                season = Number(seasonParam);
+                week = Number(weekParamRaw);
+            } else {
+                const current = await getCurrentSeasonWeek();
+                season = current.season;
+                week = current.week;
+            }
 
             const page = Math.max(1, typeof req.query.page === "string"
                 ? Number(req.query.page)
@@ -153,10 +160,10 @@ leagueRouter.get(
                 and.push({ position });
             }
 
-            if (teamAbbr) {
+            if (teamAbv) {
                 and.push({
                     team: {
-                        abbr: { equals: teamAbbr, mode: "insensitive" },
+                        abbr: { equals: teamAbv, mode: "insensitive" },
                     },
                 });
             }
@@ -180,12 +187,15 @@ leagueRouter.get(
                     team: true;
                     RosterSlot: {
                         include: {
-                            team: true;
+                            team: {
+                                include: { manager: true };
+                            }; 
                         };
                     };
                 };
             }>;
 
+            // load players from db
             const [players, total] = await Promise.all([
                 prisma.player.findMany({
                     where,
@@ -209,37 +219,83 @@ leagueRouter.get(
                 prisma.player.count({ where }),
             ]);
 
-            const items = players.map((p) => {
-                const firstSlot = p.RosterSlot[0];
-                const unavailable = !!firstSlot;
+            // build matchup map for the season/wek based on Game
+            const games = await prisma.game.findMany({
+                where: {
+                    season,
+                    week,
+                },
+                include: {
+                    homeTeam: true,
+                    awayTeam: true,
+                },
+            });
 
-                let managedBy: {
-                    managerId: number | null;
-                    managerTeamName: string;
-                    managerName: string | null;
-                } | null = null;
+            const matchupByTeamAbbr = new Map<
+                string,
+                { oppAbv: string; kickoffIso: string | null }
+            >();
+
+            for (const g of games) {
+                const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+
+                matchupByTeamAbbr.set(g.homeTeam.abbr, {
+                    oppAbv: g.awayTeam.abbr,
+                    kickoffIso,
+                });
+
+                matchupByTeamAbbr.set(g.awayTeam.abbr, {
+                    oppAbv: g.homeTeam.abbr,
+                    kickoffIso,
+                });
+            }
+
+            // projections from Tank
+            const projMap = new Map<string, { projPts: number }>();
+            try {
+                const projResp = await tankGetProjections({ week: String(week), season: String(season) });
+                const rows = extractPlayerProjections(projResp);
+                for (const r of rows) {
+                    const id = String(r?.playerID ?? r?.espnID ?? "");
+                    if (!id) continue;
+                    const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
+                    projMap.set(id, { projPts: Number.isFinite(projPts) ? projPts : 0 });
+                }
+            } catch (err) {
+                console.error("Failed to load projections:", err);
+            }
+
+            const items = players.map((p) => {
+                const slot = p.RosterSlot[0];
+                const unavailable = !!slot;
+
+                const teamAbv = p.team?.abbr ?? null;
+                const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
+                const proj = p.externalId ? projMap.get(p.externalId) : undefined;
 
                 return {
                     id: p.id,
                     name: p.name,
                     position: p.position,
-                    teamAbv: p.team?.abbr ?? null,
-                    projPts: p.projPts,
-                    headshot: p.headshotUrl ?? null,
-                    oppAbv: null,
-                    kickoffIso: null,
-
+                    teamAbv,
+                    // projPts: p.projPts ?? null,
+                    projPts: proj?.projPts ?? p.projPts ?? null,
+                    oppAbv: matchup?.oppAbv ?? null,
+                    kickoffIso: matchup?.kickoffIso ?? null,
+                    headshot: p.headshotUrl ?? null, 
                     available: !unavailable,
-
-                    managedBy: unavailable && firstSlot?.team
+                    managedBy: 
+                        unavailable && slot?.team
                         ? {
-                            managerTeamName: firstSlot.team.name,
+                            managerId: slot.team.managerId ?? null,
+                            managerTeamName: slot.team.name,
+                            managerName: slot.team.manager?.username ?? null,
                         }
-                        : null,
+                    : null,
                 };
             });
 
-            res.json({ items, total, page, limit });
+            res.json({ items, total, page, limit, season, week });
         } catch (err) {
             next(err);
         }

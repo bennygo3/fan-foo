@@ -27,7 +27,7 @@ export type Paginated<T> = {
     page?: number;
     limit?: number;
     week?: number;
-    season?: string;
+    season?: number;
 }
 
 export type SlotType = 
@@ -71,6 +71,8 @@ export type MyTeamResponse = {
 // Player FA pool
 export async function getPlayerPool(opts: {
     leagueId: number | string;
+    season?: string;
+    week?: number | string;
     search?: string;
     position?: string;
     teamAbv?: string;
@@ -81,6 +83,8 @@ export async function getPlayerPool(opts: {
 }) {
     const { 
         leagueId, 
+        season,
+        week,
         search,
         position,
         teamAbv,
@@ -92,6 +96,8 @@ export async function getPlayerPool(opts: {
 
     const url = new URL(`${API_BASE_URL}/leagues/${leagueId}/player-pool`);
 
+    if (season) url.searchParams.set("season", season);
+    if (week !== undefined && week !== "") url.searchParams.set("week", String(week));
     if (search) url.searchParams.set("search", search);
     if (position) url.searchParams.set("position", position);
     if (teamAbv) url.searchParams.set("teamAbv", teamAbv);
