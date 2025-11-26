@@ -115,21 +115,21 @@ model Team {
 }
 
 model Player {
-  id       Int    @id @default(autoincrement())
-  name     String
-  position String
-  teamId   Int?
-  team     Team?  @relation(fields: [teamId], references: [id])
-
-  externalId   String?      @unique
-  externalSrc  String?
-  projPts      Float?
-  adp          Float?
-  lastSyncedAt DateTime?
-  RosterSlot   RosterSlot[]
+  id            Int          @id @default(autoincrement())
+  name          String
+  position      String
+  teamId        Int?
+  team          Team?        @relation(fields: [teamId], references: [id])
+  headshotUrl   String?
+  externalId    String?      @unique
+  externalSrc   String?
+  projPts       Float?
+  adp           Float?
+  lastSyncedAt  DateTime?
+  RosterSlot    RosterSlot[]
   
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@unique([externalSrc, externalId])
   @@index([name])

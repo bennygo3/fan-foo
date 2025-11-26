@@ -1,9 +1,9 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export type ManagedBy = {
-    managerId: number;
+    managerId: number | null;
     managerTeamName: string;
-    managerName: string;
+    managerName: string | null;
 } | null;
 
 export type Player = {
@@ -117,7 +117,7 @@ export async function addPlayerToRoster(opts: {
     slot?: SlotType;
 }) {
     const res = await fetch(
-        `${API_BASE_URL}/leagues/${opts.leagueId}/rosters/add`,
+        `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/add`,
         {
             method: "POST",
             credentials: "include",

@@ -179,12 +179,12 @@ export default function Players() {
                                 </div>
 
                                 {/* Action: add */}
-                                <div className={styles.center}>
+                                <div className={styles.playersBtn}>
                                     <button
                                         className={styles.addBtn}
                                         disabled={p.available === false}
                                         onClick={() => onAdd(p.id)}
-                                        title={p.available === false ? "Add" : "Already owned"}
+                                        title={p.available === true ? "Add" : "N/A"}
                                     >
                                         +
                                     </button>

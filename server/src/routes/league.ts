@@ -14,7 +14,7 @@ leagueRouter.get("/", async (_req: Request, res: Response, next: NextFunction) =
                 teams: {
                     include: {
                         manager: {
-                            select: {id: true, username: true, email: true },
+                            select: { id: true, username: true, email: true },
                         },
                     },
                 },
@@ -52,8 +52,8 @@ leagueRouter.get("/:leagueId/teams", async (req: Request, res: Response, next: N
         }
 
         res.json(league);
-    } catch (err) { 
-        next(err); 
+    } catch (err) {
+        next(err);
     }
 });
 
@@ -80,7 +80,7 @@ leagueRouter.get("/:leagueId/rosters", async (req: Request, res: Response, next:
                     },
                 },
             },
-            orderBy: [{ teamId: "asc"}, { slot: "asc" }],
+            orderBy: [{ teamId: "asc" }, { slot: "asc" }],
         });
 
         res.json({ leagueId, items: slots });
@@ -93,28 +93,28 @@ leagueRouter.get(
     "/:leagueId/player-pool",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            
+
             const leagueId = Number(req.params.leagueId);
-            
+
             if (!Number.isFinite(leagueId)) {
                 return res.status(400).json({ error: "Invalid leagueId" });
             }
 
             // filters
-            const search = typeof req.query.search === "string" 
-            ? req.query.search.trim() 
-            : "";
+            const search = typeof req.query.search === "string"
+                ? req.query.search.trim()
+                : "";
 
-            const position = typeof req.query.position === "string" 
-            ? req.query.position.trim().toUpperCase() 
-            : undefined;
+            const position = typeof req.query.position === "string"
+                ? req.query.position.trim().toUpperCase()
+                : undefined;
 
-            const teamAbbr = typeof req.query.team === "string"
-            ? req.query.team.trim().toUpperCase()
-            : undefined;
+            const teamAbbr = typeof req.query.teamAbv === "string"
+                ? req.query.teamAbv.trim().toUpperCase()
+                : undefined;
 
-            const page = Math.max(1, typeof req.query.page === "string" 
-                ? Number(req.query.page) 
+            const page = Math.max(1, typeof req.query.page === "string"
+                ? Number(req.query.page)
                 : 1
             );
 
@@ -126,20 +126,20 @@ leagueRouter.get(
             const sortRaw = typeof req.query.sort === "string" ? req.query.sort : "name";
 
             const sortKey =
-            sortRaw === "position"
-            ? "position" 
-            : sortRaw === "teamId"
-            ? "teamId"
-            :sortRaw === "proj" || sortRaw === "projPts"
-            ? "projPts"
-            : "name";
+                sortRaw === "position"
+                    ? "position"
+                    : sortRaw === "teamId"
+                        ? "teamId"
+                        : sortRaw === "proj" || sortRaw === "projPts"
+                            ? "projPts"
+                            : "name";
 
             const dir: Prisma.SortOrder =
-            sortKey === "projPts"
-            ? "desc"
-            : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
-            ? "desc"
-            : "asc";
+                sortKey === "projPts"
+                    ? "desc"
+                    : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
+                        ? "desc"
+                        : "asc";
 
             const and: Prisma.PlayerWhereInput[] = [];
 
@@ -167,13 +167,13 @@ leagueRouter.get(
             const take = limit;
 
             const orderBy: Prisma.PlayerOrderByWithRelationInput =
-            sortKey === "name"
-            ? { name: dir }
-            : sortKey === "position"
-            ? { position: dir }
-            : sortKey === "teamId"
-            ? { teamId: dir }
-            : { projPts: dir };
+                sortKey === "name"
+                    ? { name: dir }
+                    : sortKey === "position"
+                        ? { position: dir }
+                        : sortKey === "teamId"
+                            ? { teamId: dir }
+                            : { projPts: dir };
 
             type PlayerWithAtts = Prisma.PlayerGetPayload<{
                 include: {
@@ -188,7 +188,7 @@ leagueRouter.get(
 
             const [players, total] = await Promise.all([
                 prisma.player.findMany({
-                    where, 
+                    where,
                     skip,
                     take,
                     orderBy,
@@ -197,7 +197,11 @@ leagueRouter.get(
                         RosterSlot: {
                             where: { leagueId },
                             include: {
-                                team: true,
+                                team: {
+                                    include: {
+                                        manager: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -209,23 +213,29 @@ leagueRouter.get(
                 const firstSlot = p.RosterSlot[0];
                 const unavailable = !!firstSlot;
 
+                let managedBy: {
+                    managerId: number | null;
+                    managerTeamName: string;
+                    managerName: string | null;
+                } | null = null;
+
                 return {
                     id: p.id,
                     name: p.name,
                     position: p.position,
                     teamAbv: p.team?.abbr ?? null,
                     projPts: p.projPts,
-                    headshot: null,
+                    headshot: p.headshotUrl ?? null,
                     oppAbv: null,
                     kickoffIso: null,
 
                     available: !unavailable,
 
                     managedBy: unavailable && firstSlot?.team
-                        ? {  
+                        ? {
                             managerTeamName: firstSlot.team.name,
                         }
-                    : null,
+                        : null,
                 };
             });
 
@@ -243,7 +253,8 @@ function allowedSlotsForPosition(pos: string): SlotType[] {
         case "QB":
             return ["QB", "BN"];
         case "RB":
-            return ["QB", "FLEX", "BN"];
+        case "FB":
+            return ["RB", "FLEX", "BN"];
         case "WR":
             return ["WR", "FLEX", "BN"];
         case "TE":
@@ -277,7 +288,7 @@ leagueRouter.post(
                 where: { id: teamId, leagueId },
             });
             if (!team) {
-                return res.status(404).json({ error: "Team not found in this league"});
+                return res.status(404).json({ error: "Team not found in this league" });
             }
 
             const player = await prisma.player.findUnique({
@@ -315,15 +326,21 @@ leagueRouter.post(
                 candidateSlots = allowedSlotsForPosition(player.position);
             }
 
-            const emptySlot = await prisma.rosterSlot.findFirst({
-                where: {
-                    leagueId,
-                    teamId,
-                    playerId: null, 
-                    slot: { in: candidateSlots },
-                },
-                orderBy: { id: "asc" },
-            });
+            let emptySlot = null;
+
+            for (const slotType of candidateSlots) {
+                emptySlot = await prisma.rosterSlot.findFirst({
+                    where: {
+                        leagueId,
+                        teamId,
+                        playerId: null,
+                        slot: slotType,
+                    },
+                    orderBy: { id: "asc" },
+                });
+
+                if (emptySlot) break;
+            }
 
             if (!emptySlot) {
                 return res.status(400).json({
@@ -338,9 +355,9 @@ leagueRouter.post(
                 data: { playerId },
                 include: {
                     player: {
-                        include: { team: true },
+                        include: { team: true }, // nfl team
                     },
-                    team: true,
+                    team: true, // fantasy team
                 },
             });
 
@@ -372,11 +389,11 @@ leagueRouter.post(
             });
 
             if (!slot) {
-                return res.status(404).json({ error: "Roster slot not found"})
+                return res.status(404).json({ error: "Roster slot not found" })
             }
 
             if (slot.playerId == null) {
-                return res.status(400).json({ error: "Roster slot already empty "});
+                return res.status(400).json({ error: "Roster slot already empty " });
             }
 
             const updatedSlot = await prisma.rosterSlot.update({
@@ -492,9 +509,9 @@ leagueRouter.get(
                     name: team.name,
                     league: team.league,
                     manager: team.manager ?? null,
-                }, 
+                },
                 roster: {
-                    starters, 
+                    starters,
                     bench,
                     ir,
                 },
@@ -507,30 +524,30 @@ leagueRouter.get(
 
 
 // Scrapyard:
-    // from player-pool route:
+// from player-pool route:
 
-            // const sortKey: "name" | "position" | "teamId" | "projPts" = 
-            // sortRaw === "position"
-            // ? "position" 
-            // : sortRaw === "teamId"
-            // ? "teamId"
-            // :sortRaw === "proj" || sortRaw === "projPts"
-            // ? "projPts"
-            // : "name";
+// const sortKey: "name" | "position" | "teamId" | "projPts" =
+// sortRaw === "position"
+// ? "position"
+// : sortRaw === "teamId"
+// ? "teamId"
+// :sortRaw === "proj" || sortRaw === "projPts"
+// ? "projPts"
+// : "name";
 
-            // const dir : Prisma.SortOrder =
-            // sortKey === "projPts"
-            // ? "desc"
-            // : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
-            // ? "desc"
-            // : "asc";
+// const dir : Prisma.SortOrder =
+// sortKey === "projPts"
+// ? "desc"
+// : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
+// ? "desc"
+// : "asc";
 
-            // free agents in this league
-            // const and: Prisma.PlayerWhereInput[] = [];
+// free agents in this league
+// const and: Prisma.PlayerWhereInput[] = [];
 
-        // players that aren't on a rosterSlot
-        // and.push({
-        //     RosterSlot: {
-        //         none: { leagueId },
-        //     },
-        // });
+// players that aren't on a rosterSlot
+// and.push({
+//     RosterSlot: {
+//         none: { leagueId },
+//     },
+// });
