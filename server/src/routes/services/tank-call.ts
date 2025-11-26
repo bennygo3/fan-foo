@@ -23,7 +23,7 @@ export type ScoringKeys =
    | "passCompletions"
    | "passAttempts"
    | "carries"
-   | "rushingYards"
+   | "rushYards"
    | "rushTD"
    | "receivingYards"
    | "receivingTD"
@@ -48,7 +48,7 @@ export const NON_PPR_SCORING: ScoringConfig = {
 
     passAttempts: 0,
     carries: 0,
-    rushingYards: 0.1,
+    rushYards: 0.1,
     rushTD: 6,
 
     receivingYards: 0.1,

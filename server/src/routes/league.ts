@@ -120,34 +120,20 @@ leagueRouter.get(
                 week = current.week;
             }
 
-            const page = Math.max(1, typeof req.query.page === "string"
-                ? Number(req.query.page)
-                : 1
-            );
-
-            const limit = Math.min(100, Math.max(1, typeof req.query.limit === "string"
-                ? Number(req.query.limit)
-                : 100)
-            );
+            const page = Math.max(1, typeof req.query.page === "string" ? Number(req.query.page) : 1);
+            const limit = Math.min(100, Math.max(1, typeof req.query.limit === "string" ? Number(req.query.limit) : 100));
 
             const sortRaw = typeof req.query.sort === "string" ? req.query.sort : "name";
-
-            const sortKey =
-                sortRaw === "position"
-                    ? "position"
-                    : sortRaw === "teamId"
-                        ? "teamId"
-                        : sortRaw === "proj" || sortRaw === "projPts"
-                            ? "projPts"
-                            : "name";
-
-            const dir: Prisma.SortOrder =
-                sortKey === "projPts"
-                    ? "desc"
-                    : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
-                        ? "desc"
-                        : "asc";
-
+            // const orderParam = typeof req.query.order === "string" ? req.query.order.toLowerCase() : "asc";
+            const orderParam = typeof req.query.order === "string" ? req.query.order.toLowerCase() : undefined;
+            
+            const dir: "asc" | "desc" =
+                sortRaw === "proj" || sortRaw === "projPts" 
+            ?
+                orderParam === "asc" ? "asc" : "desc"
+            :   orderParam === "desc" ? "desc" : "asc";
+            
+            
             const and: Prisma.PlayerWhereInput[] = [];
 
             if (search) {
@@ -170,18 +156,6 @@ leagueRouter.get(
 
             const where: Prisma.PlayerWhereInput = and.length ? { AND: and } : {};
 
-            const skip = (page - 1) * limit;
-            const take = limit;
-
-            const orderBy: Prisma.PlayerOrderByWithRelationInput =
-                sortKey === "name"
-                    ? { name: dir }
-                    : sortKey === "position"
-                        ? { position: dir }
-                        : sortKey === "teamId"
-                            ? { teamId: dir }
-                            : { projPts: dir };
-
             type PlayerWithAtts = Prisma.PlayerGetPayload<{
                 include: {
                     team: true;
@@ -189,35 +163,28 @@ leagueRouter.get(
                         include: {
                             team: {
                                 include: { manager: true };
-                            }; 
+                            };
                         };
                     };
                 };
             }>;
 
-            // load players from db
-            const [players, total] = await Promise.all([
-                prisma.player.findMany({
-                    where,
-                    skip,
-                    take,
-                    orderBy,
-                    include: {
-                        team: true,
-                        RosterSlot: {
-                            where: { leagueId },
-                            include: {
-                                team: {
-                                    include: {
-                                        manager: true,
-                                    },
+            const players: PlayerWithAtts[] = await prisma.player.findMany({
+                where,
+                include: {
+                    team: true,
+                    RosterSlot: {
+                        where: { leagueId },
+                        include: {
+                            team: {
+                                include: {
+                                    manager: true,
                                 },
                             },
                         },
                     },
-                }) as Promise<PlayerWithAtts[]>,
-                prisma.player.count({ where }),
-            ]);
+                },
+            });
 
             // build matchup map for the season/wek based on Game
             const games = await prisma.game.findMany({
@@ -236,7 +203,7 @@ leagueRouter.get(
                 { oppAbv: string; kickoffIso: string | null }
             >();
 
-            for (const g of games) {
+                for (const g of games) {
                 const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
 
                 matchupByTeamAbbr.set(g.homeTeam.abbr, {
@@ -261,11 +228,12 @@ leagueRouter.get(
                     const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
                     projMap.set(id, { projPts: Number.isFinite(projPts) ? projPts : 0 });
                 }
+                console.log("[player-pool] projMap size:", projMap.size)
             } catch (err) {
                 console.error("Failed to load projections:", err);
             }
 
-            const items = players.map((p) => {
+            const items = players.map((p, idx) => {
                 const slot = p.RosterSlot[0];
                 const unavailable = !!slot;
 
@@ -273,13 +241,24 @@ leagueRouter.get(
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
                 const proj = p.externalId ? projMap.get(p.externalId) : undefined;
 
+                if (idx < 5) {
+                    console.log("[player-pool] join debug", {
+                        dbId: p.id,
+                        name: p.name,
+                        externalId: p.externalId,
+                        hasProj: p.externalId ? projMap.has(p.externalId) : false,
+                        proj,
+                    });
+                }
+
+                const projPts = proj?.projPts ?? p.projPts ?? null;
+
                 return {
                     id: p.id,
                     name: p.name,
                     position: p.position,
                     teamAbv,
-                    // projPts: p.projPts ?? null,
-                    projPts: proj?.projPts ?? p.projPts ?? null,
+                    projPts,
                     oppAbv: matchup?.oppAbv ?? null,
                     kickoffIso: matchup?.kickoffIso ?? null,
                     headshot: p.headshotUrl ?? null, 
@@ -295,7 +274,42 @@ leagueRouter.get(
                 };
             });
 
-            res.json({ items, total, page, limit, season, week });
+            // Sort in memory
+            const sorted = [...items];
+
+            if (sortRaw === "proj" || sortRaw === "projPts") {
+                sorted.sort((a, b) => {
+                    const av = a.projPts ?? 0;
+                    const bv = b.projPts ?? 0;
+                    return dir === "asc" ? av - bv : bv - av;
+                });
+            } else if (sortRaw === "position") {
+                sorted.sort((a,b) => {
+                    const cmp = a.position.localeCompare(b.position);
+                    if (cmp !== 0) return dir === "asc" ? cmp : -cmp;
+                    return a.name.localeCompare(b.name);
+                });
+            } else if (sortRaw === "team" || sortRaw === "teamId") {
+                sorted.sort((a, b) => {
+                    const ta = a.teamAbv ?? "";
+                    const tb = b.teamAbv ?? "";
+                    const cmp = ta.localeCompare(tb);
+                    if (cmp !== 0) return dir === "asc" ? cmp : -cmp;
+                    return a.name.localeCompare(b.name);
+                });
+            } else {
+                // default sort by name
+                sorted.sort((a, b) => {
+                    const cmp = a.name.localeCompare(b.name);
+                    return dir === "asc" ? cmp: -cmp;
+                });
+            }
+
+            const total = sorted.length;
+            const start = (page - 1) * limit;
+            const paged = sorted.slice(start, start + limit);
+
+            res.json({ items: paged, total, page, limit, season, week });
         } catch (err) {
             next(err);
         }
