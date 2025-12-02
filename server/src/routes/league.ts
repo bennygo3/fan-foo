@@ -3,7 +3,8 @@ import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
 import type { SlotType, Prisma } from "@prisma/client";
 import { getCurrentSeasonWeek } from "./services/current-week";
-import { tankGetProjections, extractPlayerProjections } from "./services/tank-call";
+import { tankGetProjections, extractPlayerProjections, extractDSTProjections } from "./services/tank-call";
+import { scoreDST } from "../scoring/dst";
 
 export const leagueRouter = express.Router();
 
@@ -219,6 +220,8 @@ leagueRouter.get(
 
             // projections from Tank
             const projMap = new Map<string, { projPts: number }>();
+            const dstProjMap = new Map<string, { projPts: number }>();
+
             try {
                 const projResp = await tankGetProjections({ week: String(week), season: String(season) });
                 const rows = extractPlayerProjections(projResp);
@@ -228,10 +231,32 @@ leagueRouter.get(
                     const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
                     projMap.set(id, { projPts: Number.isFinite(projPts) ? projPts : 0 });
                 }
+
+                const dstRows = extractDSTProjections(projResp);
+                for (const d of dstRows) {
+                    const teamAbv = String(d?.teamAbv ?? d?.team ?? "").toUpperCase();
+                    if (!teamAbv) continue;
+
+                    const scored = scoreDST({
+                        teamAbv,
+                        sacks: Number(d?.sacks ?? 0),
+                        interceptions: Number(d?.interceptions ?? 0),
+                        fumbleRecoveries: Number(d?.fumbleRecoveries ?? 0),
+                        safeties: Number(d?.safeties ?? 0),
+                        defTD: Number(d?.defTD ?? 0),
+                        returnTD: Number(d?.returnTD ?? 0),
+                        blockKick: Number(d?.blockKick ?? 0),
+                        ptsAgainst: Number(d?.ptsAgainst ?? 99),
+                        yardsAgainst: Number(d?.yardsAgainst ?? 0),
+                    });
+
+                    dstProjMap.set(teamAbv, { projPts: scored });
+                }
                 console.log("[player-pool] projMap size:", projMap.size)
             } catch (err) {
                 console.error("Failed to load projections:", err);
             }
+
 
             const items = players.map((p, idx) => {
                 const slot = p.RosterSlot[0];
@@ -239,9 +264,27 @@ leagueRouter.get(
 
                 const teamAbv = p.team?.abbr ?? null;
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
-                const proj = p.externalId ? projMap.get(p.externalId) : undefined;
+                // const proj = p.externalId ? projMap.get(p.externalId) : undefined;
+                let projPts: number | null = null;
 
-                if (idx < 5) {
+                if (p.position === "DST" || p.position === "D/ST") {
+                    const dstProj = teamAbv ? dstProjMap.get(teamAbv.toUpperCase()) : undefined;
+                    projPts = dstProj?.projPts ?? p.projPts ?? null;
+
+                    if (idx < 5) {
+                        console.log("[D/ST debug]", {
+                            dbId: p.id,
+                            teamAbv,
+                            hasDstProj: teamAbv ? dstProjMap.has(teamAbv.toUpperCase()) : false,
+                            dstProj,
+                        });
+                    }
+                } else {
+                    // Offensive player 🏈 projections come from playerProjections
+                    const proj = p.externalId ? projMap.get(p.externalId) : undefined;
+                    projPts = proj?.projPts ?? p.projPts ?? null;
+
+                    if (idx < 5) {
                     console.log("[player-pool] join debug", {
                         dbId: p.id,
                         name: p.name,
@@ -250,8 +293,7 @@ leagueRouter.get(
                         proj,
                     });
                 }
-
-                const projPts = proj?.projPts ?? p.projPts ?? null;
+            }
 
                 return {
                     id: p.id,
@@ -396,6 +438,14 @@ leagueRouter.post(
                 candidateSlots = allowedSlotsForPosition(player.position);
             }
 
+            console.log("[roster/add] adding player", {
+                playerId: player.id,
+                name: player.name,
+                position: player.position,
+                requestedSlot,
+                candidateSlots,
+            });
+
             let emptySlot = null;
 
             for (const slotType of candidateSlots) {
@@ -472,7 +522,7 @@ leagueRouter.post(
             });
 
             res.json({
-                message: "Plaer dropped",
+                message: "Player dropped",
                 slot: updatedSlot,
             });
         } catch (err) {
@@ -523,19 +573,6 @@ leagueRouter.get(
                 },
                 orderBy: { id: "asc" },
             });
-
-            // group into starters/bench/IR
-            const startersOrder: SlotType[] = [
-                "QB",
-                "RB",
-                "RB",
-                "WR",
-                "WR",
-                "TE",
-                "FLEX",
-                "DST",
-                "K",
-            ];
 
             const starters: typeof slots = [];
             const bench: typeof slots = [];
@@ -591,33 +628,3 @@ leagueRouter.get(
         }
     }
 );
-
-
-// Scrapyard:
-// from player-pool route:
-
-// const sortKey: "name" | "position" | "teamId" | "projPts" =
-// sortRaw === "position"
-// ? "position"
-// : sortRaw === "teamId"
-// ? "teamId"
-// :sortRaw === "proj" || sortRaw === "projPts"
-// ? "projPts"
-// : "name";
-
-// const dir : Prisma.SortOrder =
-// sortKey === "projPts"
-// ? "desc"
-// : typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc"
-// ? "desc"
-// : "asc";
-
-// free agents in this league
-// const and: Prisma.PlayerWhereInput[] = [];
-
-// players that aren't on a rosterSlot
-// and.push({
-//     RosterSlot: {
-//         none: { leagueId },
-//     },
-// });

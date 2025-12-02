@@ -9,6 +9,7 @@
     "serve": "tsx src/index.ts",
     "db:seed": "tsx src/seeds/seed-league.ts",
     "db:seed:players": "tsx src/seeds/seed-players.ts",
+    "db:seed:dst": "tsx src/seeds/seed-dst.ts",
     "db:seed:rosters": "tsx src/seeds/seed-roster-template.ts",
     "migrate": "prisma migrate dev",
     "sync:players": "tsx src/scripts/sync-tank-players",

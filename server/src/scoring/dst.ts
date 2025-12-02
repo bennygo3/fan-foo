@@ -8,6 +8,9 @@ export type DSTRow = {
     returnTD?: number;
     blockKick?: number;
     ptsAgainst?: number;
+    yardsAgainst?: number;
+    twoPtReturns?: number;
+    onePtSafeties?: number;
 };
 
 export function scoreDST(row: DSTRow): number {
@@ -19,6 +22,9 @@ export function scoreDST(row: DSTRow): number {
     const retTD = row.returnTD ?? 0;
     const blocks = row.blockKick ?? 0;
     const pa = row.ptsAgainst ?? 999;
+    const ya = row.yardsAgainst ?? null;
+    const twoPt = row.twoPtReturns ?? 0;
+    const onePtSafe = row.onePtSafeties ?? 0;
 
     // Points allowed tiers
     let paPts = 0;
@@ -30,6 +36,20 @@ export function scoreDST(row: DSTRow): number {
     else if (pa >= 35 && pa <= 45) paPts = -3;
     else if (pa >= 46) paPts = -5;
 
+    // Yards allowed tiers
+    let yaPts = 0;
+    if (ya != null) {
+        if (ya < 100) yaPts = 5;
+        else if (ya <= 199) yaPts = 3;
+        else if (ya <= 299) yaPts = 2
+        // 300-349 -> 0pts (implicitly)
+        else if (ya >= 350 && ya <= 399) yaPts = -1;
+        else if (ya >= 400 && ya <= 449) yaPts = -3;
+        else if (ya >= 450 && ya <= 499) yaPts = -5;
+        else if (ya >= 500 && ya <= 549) yaPts = -6;
+        else if (ya >= 550) yaPts = -7;
+    }
+
     return (
         sacks * 1 +
         ints * 2 +
@@ -37,7 +57,9 @@ export function scoreDST(row: DSTRow): number {
         safeties * 2 +
         (defTD + retTD) * 6 +
         blocks * 2 +
-        paPts
+        paPts +
+        yaPts +
+        twoPt * 2 +
+        onePtSafe * 1
     );
-
 }

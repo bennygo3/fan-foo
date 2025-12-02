@@ -122,17 +122,22 @@ export async function addPlayerToRoster(opts: {
     playerId: number;
     slot?: SlotType;
 }) {
+    const payload: any = {
+        teamId: opts.teamId,
+        playerId: opts.playerId,
+    };
+
+    if (opts.slot) {
+        payload.slot = opts.slot;
+    }
+
     const res = await fetch(
         `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/add`,
         {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                teamId: opts.teamId,
-                playerId: opts.playerId,
-                slot: opts.slot,
-            }),
+            body: JSON.stringify(payload),
         }
     );
 

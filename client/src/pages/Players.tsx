@@ -62,7 +62,6 @@ export default function Players() {
                 leagueId: LEAGUE_ID,
                 teamId: TEAM_ID,
                 playerId,
-                slot: "BN",
             });
             refetch();
         } catch (e) {

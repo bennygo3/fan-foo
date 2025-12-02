@@ -1,7 +1,7 @@
 export type PlayerDTO = {
     id: string;
     name: string;
-    position: "QB" | "RB" | "WR" | "TE" | "FB" | "K";
+    position: "QB" | "RB" | "WR" | "TE" | "DST" | "K" | "FB";
     teamAbv: string | null;
     isFA: boolean;
     jerseyNum?: number | null;
@@ -15,7 +15,7 @@ export type PlayerDTO = {
     };
 };
 
-const OFFENSE = new Set(["QB", "RB", "WR", "TE", "FB", "K"]);
+const OFFENSE = new Set(["QB", "RB", "WR", "TE", "K", "FB"]);
 
 // Tank's booleans are string "True"/"False"
 const toBool = (v: any) => String(v).toLowerCase() === "true";
@@ -24,23 +24,30 @@ const toNum = (v: any) => (v == null || v === "" ? null : Number(v));
 // From a flat players list
 export function mapTanksPlayersListToDTO(api: any): PlayerDTO[] {
     const rows: any[] = api?.body ?? api ?? [];
+    
     return rows
         .filter((p) => {
             const rawPos = p?.pos ?? p?.position;
-            const pos = String(rawPos ?? "").toUpperCase();
+            let pos = String(rawPos ?? "").toUpperCase();
+
+            if (pos === "PK") pos = "K";
+
             return OFFENSE.has(pos);
         })
         .map((p) => {
             const rawPos = p?.pos ?? p?.position;
-            const pos = String(rawPos ?? "").toUpperCase() as PlayerDTO["position"];
+            // let pos = String(rawPos ?? "").toUpperCase() as PlayerDTO["position"];
+            let pos = String(rawPos ?? "").toUpperCase();
+
+            if (pos === "PK") pos = "K";
 
             const teamAbvRaw = p?.teamAbbr ?? p?.team ?? null;
             const teamAbv = teamAbvRaw ? String(teamAbvRaw) : null;
 
             const headshot =
-                p?.headshot ??
-                p?.espnHeadshot ??
-                null;
+            p?.headshot ??
+            p?.espnHeadshot ??
+            null;
 
             return {
                 id: String(p?.playerID ?? p?.espnID ?? p?.id ?? ""),
@@ -70,8 +77,9 @@ export function mapTanksRostersToPlayersDTO(api: any): PlayerDTO[] {
         
         for (const p of roster) {
             const rawPos = p?.position ?? p?.pos;
-            const pos = String(rawPos ?? "").toUpperCase();
+            let pos = String(rawPos ?? "").toUpperCase();
 
+            if (pos === "PK") pos = "K";
             if (!OFFENSE.has(pos)) continue;
 
             const headshot =
