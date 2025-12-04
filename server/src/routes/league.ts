@@ -127,14 +127,14 @@ leagueRouter.get(
             const sortRaw = typeof req.query.sort === "string" ? req.query.sort : "name";
             // const orderParam = typeof req.query.order === "string" ? req.query.order.toLowerCase() : "asc";
             const orderParam = typeof req.query.order === "string" ? req.query.order.toLowerCase() : undefined;
-            
+
             const dir: "asc" | "desc" =
-                sortRaw === "proj" || sortRaw === "projPts" 
-            ?
-                orderParam === "asc" ? "asc" : "desc"
-            :   orderParam === "desc" ? "desc" : "asc";
-            
-            
+                sortRaw === "proj" || sortRaw === "projPts"
+                    ?
+                    orderParam === "asc" ? "asc" : "desc"
+                    : orderParam === "desc" ? "desc" : "asc";
+
+
             const and: Prisma.PlayerWhereInput[] = [];
 
             if (search) {
@@ -204,7 +204,7 @@ leagueRouter.get(
                 { oppAbv: string; kickoffIso: string | null }
             >();
 
-                for (const g of games) {
+            for (const g of games) {
                 const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
 
                 matchupByTeamAbbr.set(g.homeTeam.abbr, {
@@ -285,15 +285,15 @@ leagueRouter.get(
                     projPts = proj?.projPts ?? p.projPts ?? null;
 
                     if (idx < 5) {
-                    console.log("[player-pool] join debug", {
-                        dbId: p.id,
-                        name: p.name,
-                        externalId: p.externalId,
-                        hasProj: p.externalId ? projMap.has(p.externalId) : false,
-                        proj,
-                    });
+                        console.log("[player-pool] join debug", {
+                            dbId: p.id,
+                            name: p.name,
+                            externalId: p.externalId,
+                            hasProj: p.externalId ? projMap.has(p.externalId) : false,
+                            proj,
+                        });
+                    }
                 }
-            }
 
                 return {
                     id: p.id,
@@ -303,16 +303,16 @@ leagueRouter.get(
                     projPts,
                     oppAbv: matchup?.oppAbv ?? null,
                     kickoffIso: matchup?.kickoffIso ?? null,
-                    headshot: p.headshotUrl ?? null, 
+                    headshot: p.headshotUrl ?? null,
                     available: !unavailable,
-                    managedBy: 
+                    managedBy:
                         unavailable && slot?.team
-                        ? {
-                            managerId: slot.team.managerId ?? null,
-                            managerTeamName: slot.team.name,
-                            managerName: slot.team.manager?.username ?? null,
-                        }
-                    : null,
+                            ? {
+                                managerId: slot.team.managerId ?? null,
+                                managerTeamName: slot.team.name,
+                                managerName: slot.team.manager?.username ?? null,
+                            }
+                            : null,
                 };
             });
 
@@ -326,7 +326,7 @@ leagueRouter.get(
                     return dir === "asc" ? av - bv : bv - av;
                 });
             } else if (sortRaw === "position") {
-                sorted.sort((a,b) => {
+                sorted.sort((a, b) => {
                     const cmp = a.position.localeCompare(b.position);
                     if (cmp !== 0) return dir === "asc" ? cmp : -cmp;
                     return a.name.localeCompare(b.name);
@@ -343,7 +343,7 @@ leagueRouter.get(
                 // default sort by name
                 sorted.sort((a, b) => {
                     const cmp = a.name.localeCompare(b.name);
-                    return dir === "asc" ? cmp: -cmp;
+                    return dir === "asc" ? cmp : -cmp;
                 });
             }
 
@@ -531,100 +531,215 @@ leagueRouter.post(
     }
 );
 
-leagueRouter.get(
-    "/:leagueId/teams/:teamId/roster",
-    async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const leagueId = Number(req.params.leagueId);
-            const teamId = Number(req.params.teamId);
+// leagueRouter.get(
+//     "/:leagueId/teams/:teamId/roster",
+//     async (req: Request, res: Response, next: NextFunction) => {
+//         try {
+//             const leagueId = Number(req.params.leagueId);
+//             const teamId = Number(req.params.teamId);
 
-            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
-                return res.status(400).json({ error: "Invalid leagueId or teamId" });
-            }
+//             if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+//                 return res.status(400).json({ error: "Invalid leagueId or teamId" });
+//             }
 
-            // Load team-manager
-            const team = await prisma.fantasyTeam.findFirst({
-                where: { id: teamId, leagueId },
-                include: {
-                    manager: {
-                        select: { id: true, username: true, email: true },
-                    },
-                    league: {
-                        select: { id: true, name: true },
-                    },
-                },
-            });
+//             const seasonParam = req.query.season as string | undefined;
+//             const weekParam = req.query.week as string | undefined;
 
-            if (!team) {
-                return res.status(404).json({ error: "Team no aqui" });
-            }
+//             let season: number;
+//             let week: number;
 
-            // Load all roster slots for this team
-            const slots = await prisma.rosterSlot.findMany({
-                where: { leagueId, teamId },
-                include: {
-                    player: {
-                        include: {
-                            team: {
-                                select: { id: true, abbr: true, name: true },
-                            },
-                        },
-                    },
-                },
-                orderBy: { id: "asc" },
-            });
+//             if (seasonParam && weekParam) {
+//                 season = Number(seasonParam);
+//                 week = Number(weekParam);
+//             } else {
+//                 const current = await getCurrentSeasonWeek();
+//                 season = current.season;
+//                 week = current.week;
+//             }
 
-            const starters: typeof slots = [];
-            const bench: typeof slots = [];
-            const ir: typeof slots = [];
+//             // Load team-manager
+//             const team = await prisma.fantasyTeam.findFirst({
+//                 where: { id: teamId, leagueId },
+//                 include: {
+//                     manager: { select: { id: true, username: true, email: true } },
+//                     league: { select: { id: true, name: true } },
+//                 },
+//             });
 
-            for (const slot of slots) {
-                if (slot.slot === "IR") {
-                    ir.push(slot);
-                } else if (slot.slot === "BN") {
-                    bench.push(slot);
-                } else {
-                    starters.push(slot);
-                }
-            }
+//             if (!team) {
+//                 return res.status(404).json({ error: "Team no aqui" });
+//             }
 
-            // order lineup by preferred order
-            const slotPriority: Record<SlotType, number> = {
-                QB: 1,
-                RB: 2,
-                WR: 3,
-                TE: 4,
-                FLEX: 5,
-                DST: 6,
-                K: 7,
-                BN: 99,
-                IR: 100,
-            };
+//             // Load all roster slots for this team
+//             const slots = await prisma.rosterSlot.findMany({
+//                 where: { leagueId, teamId },
+//                 include: {
+//                     player: {
+//                         include: {
+//                             team: {
+//                                 select: { id: true, abbr: true, name: true },
+//                             },
+//                         },
+//                     },
+//                 },
+//                 orderBy: { id: "asc" },
+//             });
 
-            starters.sort((a, b) => {
-                const pa = slotPriority[a.slot] ?? 999;
-                const pb = slotPriority[b.slot] ?? 999;
-                if (pa !== pb) return pa - pb;
-                return a.id - b.id;
-            });
+//             const games = await prisma.game.findMany({
+//                 where: { season, week },
+//                 include: { homeTeam: true, awayTeam: true },
+//             });
 
-            // shape response for frontend
-            res.json({
-                leagueId,
-                team: {
-                    id: team.id,
-                    name: team.name,
-                    league: team.league,
-                    manager: team.manager ?? null,
-                },
-                roster: {
-                    starters,
-                    bench,
-                    ir,
-                },
-            });
-        } catch (err) {
-            next(err);
-        }
-    }
-);
+//             const matchupByTeamAbbr = new Map<string, { oppAbv: string; kickoffIso: string | null }>();
+
+//             for (const g of games) {
+//                 const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+
+//                 matchupByTeamAbbr.set(g.awayTeam.abbr, {
+//                     oppAbv: g.homeTeam.abbr,
+//                     kickoffIso,
+//                 });
+
+//                 matchupByTeamAbbr.set(g.homeTeam.abbr, {
+//                     oppAbv: g.awayTeam.abbr,
+//                     kickoffIso,
+//                 });
+//             }
+
+//             const projMap = new Map<string, number>(); // playerID -> projPts
+//             const dstProjMap = new Map<string, number>(); // teamAbv -> projPts
+
+//             try {
+//                 const projResp = await tankGetProjections({
+//                     week,
+//                     season,
+//                 });
+
+//                 const rows = extractPlayerProjections(projResp);
+//                 for (const r of rows) {
+//                     const id = String(r?.playerID ?? r?.espnID ?? "");
+//                     if (!id) continue;
+
+//                     const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
+//                     projMap.set(id, Number.isFinite(projPts) ? projPts : 0);
+//                 }
+
+//                 const dstRows = extractDSTProjections(projResp);
+//                 for (const d of dstRows) {
+//                     const teamAbv = String(d?.teamAbv ?? d?.team ?? "").toUpperCase();
+//                     if (!teamAbv) continue;
+
+//                     const scored = scoreDST({
+//                         teamAbv,
+//                         sacks: Number(d?.sacks ?? 0),
+//                         interceptions: Number(d?.interceptions ?? 0),
+//                         fumbleRecoveries: Number(d?.fumbleRecoveries ?? 0),
+//                         safeties: Number(d?.safeties ?? 0),
+//                         defTD: Number(d?.defTD ?? 0),
+//                         returnTD: Number(d?.returnTD ?? 0),
+//                         blockKick: Number(d?.blockKIck ?? 0),
+//                         ptsAgainst: Number(d?.ptsAgainst ?? 99),
+//                         yardsAgainst: Number(d?.yardsAgainst ?? 0),
+//                     });
+
+//                     dstProjMap.set(teamAbv, scored);
+//                 }
+//             } catch (err) {
+//                 console.error("[roster] projection error:", err);
+//             }
+        
+//         const decorated = slots.map((slot, idx) => {
+//             const p = slot.player;
+//             const teamAbv = p?.team?.abbr ?? null;
+//             const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
+
+//             let projPts: number | null = null;
+
+//             if (p) {
+//                 if (p.position === "DST") {
+//                     projPts = teamAbv
+//                         ? dstProjMap.get(teamAbv.toUpperCase()) ?? null
+//                         : null;
+//                 } else {
+//                     const externalProj = p.externalId
+//                         ? projMap.get(p.externalId) ?? null
+//                         : null;
+//                     projPts = externalProj ?? p.projPts ?? null;
+//                 }
+
+//                 if (idx < 3) {
+//                     console.log("[roster debug]", {
+//                         slotId: slot.id,
+//                         name: p.name,
+//                         pos: p.position,
+//                         teamAbv,
+//                         externalId: p.externalId,
+//                         projPts,
+//                     });
+//                 }
+//             }
+
+//             return {
+//                 ...slot,
+//                 oppAbv: matchup?.oppAbv ?? null,
+//                 kickoffIso: matchup?.kickoffIso ?? null,
+//                 projPts,
+//                 livePts: null, // TODO: wire up live scoring
+//             };
+//         });
+        
+//         const starters: typeof decorated = [];
+//         const bench: typeof decorated = [];
+//         const ir: typeof decorated = [];
+
+//         for (const slot of decorated) {
+//             if (slot.slot === "IR") {
+//                 ir.push(slot);
+//             } else if (slot.slot === "BN") {
+//                 bench.push(slot);
+//             } else {
+//                 starters.push(slot);
+//             }
+//         }
+
+//         // order lineup by preferred order
+//         const slotPriority: Record<SlotType, number> = {
+//             QB: 1,
+//             RB: 2,
+//             WR: 3,
+//             TE: 4,
+//             FLEX: 5,
+//             DST: 6,
+//             K: 7,
+//             BN: 99,
+//             IR: 100,
+//         };
+
+//         starters.sort((a, b) => {
+//             const pa = slotPriority[a.slot] ?? 999;
+//             const pb = slotPriority[b.slot] ?? 999;
+//             if (pa !== pb) return pa - pb;
+//             return a.id - b.id;
+//         });
+
+//         // shape response for frontend
+//         res.json({
+//             leagueId,
+//             team: {
+//                 id: team.id,
+//                 name: team.name,
+//                 league: team.league,
+//                 manager: team.manager ?? null,
+//             },
+//             week,
+//             roster: {
+//                 starters,
+//                 bench,
+//                 ir,
+//             },
+//         });
+//     } catch (err) {
+//         next(err);
+//     }
+//     }
+// );

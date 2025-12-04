@@ -60,7 +60,6 @@ export const NON_PPR_SCORING: ScoringConfig = {
     fgMissed: -1,
     xpMade: 1,
     xpMissed: -1,
-    // defTd: 6,
 };
 
 export const HALF_PPR_SCORING: ScoringConfig = {
@@ -147,7 +146,7 @@ export async function tankGetBoxScore(
 
 export async function tankGetProjections(opts: {
     week: number | string;
-    season: string;
+    season: number | string;
     scoring?: ScoringConfig;
 }) {
     const { week, season, scoring = {} } = opts;
@@ -155,7 +154,7 @@ export async function tankGetProjections(opts: {
         url: `https://${RAPID_HOST}/getNFLProjections`,
         params: {
             week: String(week),
-            archiveSeason: season,
+            archiveSeason: String(season),
             itemFormat: "list",
             ...buildScoringParams({ ...NON_PPR_SCORING, ...scoring })
         },
