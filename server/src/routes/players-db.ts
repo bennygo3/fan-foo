@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 
 const router = Router();
 
-// GET /players?search
+// talks to prisma player table, simple list and detail of players, shows who is in player database
 router.get("/", async (req: Request, res: Response) => {
     const search = typeof req.query.search === "string" ? req.query.search : "";
     const teamId = typeof req.query.teamId === "string" ? Number(req.query.teamId) : undefined;
@@ -20,13 +20,13 @@ router.get("/", async (req: Request, res: Response) => {
             sortRaw === "teamId" ? "teamId" :
                 sortRaw === "proj" || sortRaw === "projPts" ? "projPts" :
                     "name"
-        ;
+    ;
 
     const dir: Prisma.SortOrder =
         sortKey === "projPts"
             ? "desc"
             : (typeof req.query.order === "string" && req.query.order.toLowerCase() === "desc" ? "desc" : "asc")
-        ;
+    ;
 
     const and: Prisma.PlayerWhereInput[] = [];
     if (search.trim()) {
@@ -44,8 +44,8 @@ router.get("/", async (req: Request, res: Response) => {
     // Build orderBy with a narrow union so it remains type-safe -------->
     const orderBy: Prisma.PlayerOrderByWithRelationInput =
         sortKey === "name" ? { name: dir } :
-        sortKey === "position" ? { position: dir } :
-        sortKey === "teamId" ? { teamId: dir } : { projPts: dir }
+            sortKey === "position" ? { position: dir } :
+                sortKey === "teamId" ? { teamId: dir } : { projPts: dir }
     ;
 
     try {
@@ -64,7 +64,7 @@ router.get("/", async (req: Request, res: Response) => {
 router.get("/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid player id" });
-    
+
     try {
         const item = await prisma.player.findUnique({ where: { id }, include: { team: true }, });
         if (!item) return res.status(404).json({ error: "player/id not found" });

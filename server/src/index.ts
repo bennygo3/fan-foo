@@ -8,13 +8,11 @@ import cors from "cors";
 import { prisma } from "./lib/prisma"
 import { nfl } from "./routes/nfl";
 import { leagueRouter } from "./routes/league";
-// import { rostersRouter } from "./routes/rosters";
-import scheduleRouter from "./routes/schedule";
-
-// import { mockTeam } from "./routes/services/mock-team";
-
-import playersRouter from "./routes/players";
-import teamsRouter from "./routes/teams";
+import { myTeamRouter } from "./routes/my-team";
+import { playerPoolRouter } from "./routes/player-pool";
+import nflScheduleRouter from "./routes/nfl-schedule";
+import playersRouter from "./routes/players-db";
+import teamsRouter from "./routes/nfl-teams";
 
 const app = express();
 
@@ -37,11 +35,12 @@ app.get("/", (_req: Request, res: Response) => {
 
 app.use("/nfl", nfl);
 app.use("/leagues", leagueRouter);
+app.use("/leagues", myTeamRouter);
+app.use("/leagues", playerPoolRouter);
 app.use("/players", playersRouter);
 app.use("/teams", teamsRouter);
-app.use("/api", scheduleRouter);
-// app.use("/leagues", rostersRouter);
-// app.use("/mock-team", mockTeam);
+app.use("/nfl", nflScheduleRouter);
+
 
 // Create a new user
 app.post("/users", async (req: Request, res: Response) => {

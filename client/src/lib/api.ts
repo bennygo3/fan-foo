@@ -11,7 +11,7 @@ export type Player = {
     name: string;
     position: string;
     teamAbv: string | null;
-    isFA: boolean;
+    isFA?: boolean;
     jerseyNum?: number | null;
     headshot?: string | null;
     projPts?: number | null;
@@ -53,21 +53,65 @@ export type RosterSlot = {
         position: string;
         team?: { abbr: string; name: string };
     } | null;
+    oppAbv?: string | null;
+    kickoffIso?: string | null;
+    projPts?: number | null;
+    livePts?: number | null;
 };
 
-export type MyTeamResponse = {
+// backend add/drop return
+export type RosterMutationResponse = {
+    message: string;
+    slot: RosterSlot;
+}
+
+// My Team types - helper
+export type TeamSummary = {
+    id: number;
+    name: string;
+    league: { id: number; name: string; };
+    manager: { id: number; username: string; email: string } | null;
+};
+
+export type MyTeamApiResponse = {
     leagueId: number;
-    teamId: number;
-    teamName: string;
-    managerName: string;
+    team: TeamSummary;
     week: number;
-    starters: RosterSlot[];
-    bench: RosterSlot[];
-    ir: RosterSlot[];
+    roster: {
+        starters: RosterSlot[];
+        bench: RosterSlot[];
+        ir: RosterSlot[];
+    };
 };
 
+export async function getMyTeam(opts: {
+    leagueId: number | string;
+    teamId: number | string;
+    season?: string;
+    week?: number | string;
+}) {
+    const { leagueId, teamId, season, week } = opts;
+    const url = new URL(
+        `${API_BASE_URL}/leagues/${leagueId}/teams/${teamId}/roster`
+    );
 
+    if (season) url.searchParams.set("season", season);
+    if (week !== undefined && week !== "") {
+        url.searchParams.set("week", String(week));
+    }
 
+    const res = await fetch(url.toString(), { credentials: "include" });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+            `GET /leagues/${leagueId}/teams/${teamId}/roster failed: ${res.status} ${text}`
+        );
+    }
+
+    return (await res.json()) as MyTeamApiResponse;
+}
+    
 // Player FA pool
 export async function getPlayerPool(opts: {
     leagueId: number | string;
@@ -144,11 +188,11 @@ export async function addPlayerToRoster(opts: {
     if (!res.ok) {
         const text = await res.text();
         throw new Error(
-            `POST .../${opts.leagueId}/rosters/add failed: ${res.status} ${text}`
+            `POST .../${opts.leagueId}/teams/${opts.teamId}/roster/add failed: ${res.status} ${text}`
         );
     }
 
-    return (await res.json()) as MyTeamResponse;
+    return (await res.json()) as RosterMutationResponse;
 }
 
 export type DSTProjections = {
@@ -158,7 +202,7 @@ export type DSTProjections = {
     interceptions: number;
     fumbleRecoveries: number;
     safeties: number;
-    defTd: number;
+    defTD: number;
     returnTD: number;
     blockKick: number;
     ptsAgainst: number;
@@ -192,14 +236,15 @@ export async function getDSTProjections(params: {
 
 export async function dropPlayerFromRoster(opts: {
     leagueId: number;
+    teamId: number;
     rosterSlotId: number;
 }) {
     const res = await fetch(
-        `${API_BASE_URL}/leagues/${opts.leagueId}/rosters/drop`,
+        `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop`,
         {
             method: "POST",
             credentials: "include",
-            headers: { "Content-Type": "applications/json" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 rosterSlotId: opts.rosterSlotId,
             }),
@@ -209,10 +254,10 @@ export async function dropPlayerFromRoster(opts: {
     if (!res.ok) {
         const text = await res.text();
         throw new Error(
-            `POST /leagues/${opts.leagueId}/rosters/drop failed ${text}`
+            `POST /leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop failed ${text}`
         );
     }
 
-    return (await res.json()) as MyTeamResponse;
+    return (await res.json()) as RosterMutationResponse;
 }
     

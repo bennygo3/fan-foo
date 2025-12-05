@@ -1,46 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-
-type SlotType = "QB" | "RB" | "WR" | "TE" | "FLEX" | "DST" | "K" | "BN" | "IR";
-
-interface NflTeam {
-    id: number;
-    abbr: string;
-    name: string;
-}
-
-interface Player {
-    id: number;
-    name: string;
-    position: string;
-    team: NflTeam | null;
-}
-
-interface RosterSlot {
-    id: number;
-    leagueId: number;
-    teamId: number;
-    slot: SlotType;
-    playerId: number | null;
-    player: Player | null;
-}
-
-interface TeamSummary {
-    id: number;
-    name: string;
-    league: { id: number; name: string };
-    manager: { id: number; username: string; email: string } | null;
-}
-
-interface RosterResponse {
-    leagueId: number;
-    team: TeamSummary;
-    roster: {
-        starters: RosterSlot[];
-        bench: RosterSlot[];
-        ir: RosterSlot[];
-    };
-}
+import type { MyTeamApiResponse, RosterSlot, } from "../lib/api";
+import { getMyTeam } from "../lib/api";
 
 export default function MyTeamPage() {
     const params = useParams<{ leagueId?: string; teamId?: string }>();
@@ -48,7 +9,7 @@ export default function MyTeamPage() {
     const leagueId = Number(params.leagueId ?? 1);
     const teamId = Number(params.teamId ?? 6);
 
-    const [data, setData] = useState<RosterResponse | null>(null);
+    const [data, setData] = useState<MyTeamApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,15 +27,8 @@ export default function MyTeamPage() {
                 setLoading(true);
                 setError(null);
 
-                const res = await fetch(
-                    `/leagues/${leagueId}/teams/${teamId}/roster`
-                );
+                const json = await getMyTeam({ leagueId, teamId });
 
-                if (!res.ok) {
-                    throw new Error(`Request failed with status ${res.status}`);
-                }
-
-                const json = (await res.json()) as RosterResponse;
                 if (!isCancelled) setData(json);
             } catch (err: any) {
                 if (!isCancelled) {
@@ -124,100 +78,65 @@ export default function MyTeamPage() {
                 </div>
 
                 <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
-                    Current Week: <strong>11</strong>
+                    Current Week: <strong>{data.week}</strong>
                 </div>
             </header>
 
             <section style={{ marginBottom: "2rem" }}>
                 <h2 style={{ marginBottom: "0.75rem" }}>Starters</h2>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem", }}>
-                    <thead>
-                        <tr>
-                            <th style={thStyle}>Slot</th>
-                            <th style={thStyle}>Player</th>
-                            <th style={thStyle}>NFL Team</th>
-                            <th style={thStyle}>Pos</th>
-                            <th style={thStyle}>Opponent</th>
-                            <th style={thStyle}>Status</th>
-                            <th style={thStyle}>Projected</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {starters.map((slot) => (
-                            <RosterRow key={slot.id} slot={slot} />
-                        ))}
-                    </tbody>
-                </table>
+                <RosterTable slots={starters} />
             </section>
 
             <section style={{ marginBottom: "2rem" }}>
                 <h2 style={{ marginBottom: "0.75rem" }}>Bench</h2>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem", }}>
-                    <thead>
-                        <tr>
-                            <th style={thStyle}>Slot</th>
-                            <th style={thStyle}>Player</th>
-                            <th style={thStyle}>NFL Team</th>
-                            <th style={thStyle}>Pos</th>
-                            <th style={thStyle}>Opponent</th>
-                            <th style={thStyle}>Status</th>
-                            <th style={thStyle}>Projected</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {bench.map((slot) => (
-                            <RosterRow key={slot.id} slot={slot} />
-                        ))}
-                    </tbody>
-                </table>
+                <RosterTable slots={bench} />
             </section>
-
             <section>
                 <h2 style={{ marginBottom: "0.75rem" }}>IR</h2>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem", }}>
-                    <thead>
-                        <tr>
-                            <th style={thStyle}>Slot</th>
-                            <th style={thStyle}>Player</th>
-                            <th style={thStyle}>NFL Team</th>
-                            <th style={thStyle}>Pos</th>
-                            <th style={thStyle}>Opponent</th>
-                            <th style={thStyle}>Status</th>
-                            <th style={thStyle}>Projected</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {ir.map((slot) => (
-                            <RosterRow key={slot.id} slot={slot} />
-                        ))}
-                    </tbody>
-                </table>
+                <RosterTable slots={ir} />
             </section>
         </div>
     );
-}
-
-const thStyle: React.CSSProperties = {
-    textAlign: "left",
-    padding: "0.5rem",
-    borderBottom: "1px solid #ddd",
 };
 
-const tdStyle: React.CSSProperties = {
-    padding: "0.4rem 0.5rem",
-    borderBottom: "1px solid #eee",
+function RosterTable({ slots }: { slots: RosterSlot[] }) {
+    return (
+        <table
+            style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "0.9rem",
+            }}
+        >
+            <thead>
+                <tr>
+                    <th style={thStyle}>Slot</th>
+                    <th style={thStyle}>Player</th>
+                    <th style={thStyle}>NFL Team</th>
+                    <th style={thStyle}>Pos</th>
+                    <th style={thStyle}>Opponent</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Projected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {slots.map((slot) => (
+                    <RosterRow key={slot.id} slot={slot} />
+                ))}
+            </tbody>
+        </table>
+    );
 }
 
 function RosterRow({ slot }: { slot: RosterSlot }) {
     const p = slot.player;
-
     const hasPlayer = !!p;
     const nflTeam = p?.team?.abbr ?? "-";
 
-    // TODO: wire opponent + game time from Game table
-    const opponentDisplay = "-";
     const statusDisplay = "-";
-    const projDisplay = "-";
+    const opponentDisplay = slot.oppAbv ?? "-";
+    const projDisplay = slot.projPts != null ? slot.projPts.toFixed(1) : "-";
+    const liveDisplay = slot.livePts != null ? slot.livePts.toFixed(1) : "-";
 
     return (
         <tr>
@@ -231,9 +150,21 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
             </td>
             <td style={tdStyle}>{hasPlayer ? nflTeam : "-"}</td>
             <td style={tdStyle}>{hasPlayer ? p!.position : "-"}</td>
-            <td style={tdStyle}>{opponentDisplay}</td>
-            <td style={tdStyle}>{statusDisplay}</td>
-            <td style={tdStyle}>{projDisplay}</td>
+            <td style={tdStyle}>{hasPlayer ? opponentDisplay : "-"}</td>
+            <td style={tdStyle}>{hasPlayer ? statusDisplay : "-"}</td>
+            <td style={tdStyle}>{hasPlayer ? projDisplay: "-"}</td>
+            <td style={tdStyle}>{hasPlayer ? liveDisplay: "-"}</td>
         </tr>
-    )
+    );
+}
+
+const thStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "0.5rem",
+    borderBottom: "1px solid #ddd",
+};
+
+const tdStyle: React.CSSProperties = {
+    padding: "0.4rem 0.5rem",
+    borderBottom: "1px solid #eee",
 }
