@@ -51,6 +51,7 @@ export type RosterSlot = {
         id: number;
         name: string;
         position: string;
+        headshotUrl?: string | null;
         team?: { abbr: string; name: string };
     } | null;
     oppAbv?: string | null;

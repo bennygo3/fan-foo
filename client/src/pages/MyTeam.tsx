@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./myTeam.css";
 import { useParams } from "react-router-dom";
 import type { MyTeamApiResponse, RosterSlot, } from "../lib/api";
 import { getMyTeam } from "../lib/api";
@@ -67,7 +68,7 @@ export default function MyTeamPage() {
     const { starters, bench, ir } = roster;
 
     return (
-        <div style={{ padding: "1.5rem", maxWidth: 900, margin: "0 auto" }}>
+        <div className="">
             <header style={{ marginBottom: "1.5rem" }}>
                 <h1 style={{ margin: 0 }}>{team.name}</h1>
                 <div style={{ fontSize: "0.9 rem", color: "#555" }}>
@@ -101,12 +102,12 @@ export default function MyTeamPage() {
 
 function RosterTable({ slots }: { slots: RosterSlot[] }) {
     return (
-        <table
-            style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.9rem",
-            }}
+        <table className="my-team-table"
+            // style={{
+            //     width: "100%",
+            //     borderCollapse: "collapse",
+            //     fontSize: "0.9rem",
+            // }}
         >
             <thead>
                 <tr>
@@ -114,7 +115,7 @@ function RosterTable({ slots }: { slots: RosterSlot[] }) {
                     <th style={thStyle}>Player</th>
                     <th style={thStyle}>NFL Team</th>
                     <th style={thStyle}>Pos</th>
-                    <th style={thStyle}>Opponent</th>
+                    <th style={thStyle}>Opp</th>
                     <th style={thStyle}>Status</th>
                     <th style={thStyle}>Projected</th>
                 </tr>
@@ -131,6 +132,7 @@ function RosterTable({ slots }: { slots: RosterSlot[] }) {
 function RosterRow({ slot }: { slot: RosterSlot }) {
     const p = slot.player;
     const hasPlayer = !!p;
+    const headshot = p?.headshotUrl ?? null;
     const nflTeam = p?.team?.abbr ?? "-";
 
     const statusDisplay = "-";
@@ -143,7 +145,30 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
             <td style={tdStyle}>{slot.slot}</td>
             <td style={tdStyle}>
                 {hasPlayer ? (
+                    <span 
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                        }}
+                    >
+                        {headshot && (
+                            <img 
+                                src={headshot}
+                                alt={p!.name}
+                                style={{
+                                    width: 38,
+                                    height: 38,
+                                    objectFit: "cover",
+                                    flexShrink: 0,
+                                    marginRight: "15px",
+                                }}
+                            />
+                        )}
+                    
+            
                     <span>{p!.name}</span>
+                    </span>
                 ) : (
                     <span style={{ color: "#999" }}>Empty</span>
                 )}
