@@ -109,7 +109,8 @@ model Team {
   abbr    String   @unique
   name    String
   players Player[]
-
+  logoUrl String? 
+  byeWeeks Json?
   homeGames Game[] @relation("homeTeam")
   awayGames Game[] @relation("awayTeam")
 }

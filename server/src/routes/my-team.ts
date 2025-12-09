@@ -1,12 +1,30 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
-import type { SlotType } from "@prisma/client";
+import type { SlotType, Prisma } from "@prisma/client";
 import { getCurrentSeasonWeek } from "./services/current-week";
 import { tankGetProjections, extractPlayerProjections, extractDSTProjections } from "./services/tank-call";
 import { scoreDST } from "../scoring/dst";
 
 export const myTeamRouter = express.Router();
+
+type RosterSlotWithPlayer = Prisma.RosterSlotGetPayload<{
+    include: {
+        player: {
+            include: {
+                team: {
+                    select: {
+                        id: true;
+                        abbr: true;
+                        name: true;
+                        byeWeeks: true;
+                        logoUrl: true;
+                    };
+                };
+            };
+        };
+    };
+}>;
 
 myTeamRouter.get(
     "/:leagueId/teams/:teamId/roster",
@@ -48,13 +66,19 @@ myTeamRouter.get(
             }
 
             // Load all roster slots for this team
-            const slots = await prisma.rosterSlot.findMany({
+            const slots: RosterSlotWithPlayer[] = await prisma.rosterSlot.findMany({
                 where: { leagueId, teamId },
                 include: {
                     player: {
                         include: {
                             team: {
-                                select: { id: true, abbr: true, name: true },
+                                select: {
+                                    id: true,
+                                    abbr: true,
+                                    name: true,
+                                    byeWeeks: true,
+                                    logoUrl: true,
+                                },
                             },
                         },
                     },
@@ -124,99 +148,113 @@ myTeamRouter.get(
             } catch (err) {
                 console.error("[roster] projection error:", err);
             }
-        
-        const decorated = slots.map((slot, idx) => {
-            const p = slot.player;
-            const teamAbv = p?.team?.abbr ?? null;
-            const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
 
-            let projPts: number | null = null;
+            const decorated = slots.map((slot, idx) => {
+                const p = slot.player;
+                const teamAbv = p?.team?.abbr ?? null;
+                const byeWeeks = p?.team?.byeWeeks as any | undefined;
 
-            if (p) {
-                if (p.position === "DST") {
-                    projPts = teamAbv
-                        ? dstProjMap.get(teamAbv.toUpperCase()) ?? null
-                        : null;
+                const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
+
+                let oppAbv: string | null = null;
+
+                if (matchup) {
+                    oppAbv = matchup.oppAbv;
+                } else if (teamAbv && byeWeeks) {
+                    // byeWeeks should be json. treat it as a map
+                    const byeForSeason = byeWeeks[String(season)];
+                    if (Number(byeForSeason) === week) {
+                        oppAbv = "BYE";
+                    }
+                }
+
+                let projPts: number | null = null;
+
+                if (p) {
+                    if (p.position === "DST") {
+                        projPts = teamAbv
+                            ? dstProjMap.get(teamAbv.toUpperCase()) ?? null
+                            : null;
+                    } else {
+                        const externalProj = p.externalId
+                            ? projMap.get(p.externalId) ?? null
+                            : null;
+                        projPts = externalProj ?? p.projPts ?? null;
+                    }
+
+                    if (idx < 3) {
+                        console.log("[roster debug]", {
+                            slotId: slot.id,
+                            name: p.name,
+                            pos: p.position,
+                            teamAbv,
+                            externalId: p.externalId,
+                            projPts,
+                        });
+                    }
+                }
+
+                return {
+                    ...slot,
+                    oppAbv,
+                    kickoffIso: matchup?.kickoffIso ?? null,
+                    projPts,
+                    livePts: null, // TODO: wire up live scoring
+                };
+            });
+
+            const starters: typeof decorated = [];
+            const bench: typeof decorated = [];
+            const ir: typeof decorated = [];
+
+            for (const slot of decorated) {
+                if (slot.slot === "IR") {
+                    ir.push(slot);
+                } else if (slot.slot === "BN") {
+                    bench.push(slot);
                 } else {
-                    const externalProj = p.externalId
-                        ? projMap.get(p.externalId) ?? null
-                        : null;
-                    projPts = externalProj ?? p.projPts ?? null;
-                }
-
-                if (idx < 3) {
-                    console.log("[roster debug]", {
-                        slotId: slot.id,
-                        name: p.name,
-                        pos: p.position,
-                        teamAbv,
-                        externalId: p.externalId,
-                        projPts,
-                    });
+                    starters.push(slot);
                 }
             }
 
-            return {
-                ...slot,
-                oppAbv: matchup?.oppAbv ?? null,
-                kickoffIso: matchup?.kickoffIso ?? null,
-                projPts,
-                livePts: null, // TODO: wire up live scoring
+            // order lineup by preferred order
+            const slotPriority: Record<SlotType, number> = {
+                QB: 1,
+                RB: 2,
+                WR: 3,
+                TE: 4,
+                FLEX: 5,
+                DST: 6,
+                K: 7,
+                BN: 99,
+                IR: 100,
             };
-        });
-        
-        const starters: typeof decorated = [];
-        const bench: typeof decorated = [];
-        const ir: typeof decorated = [];
 
-        for (const slot of decorated) {
-            if (slot.slot === "IR") {
-                ir.push(slot);
-            } else if (slot.slot === "BN") {
-                bench.push(slot);
-            } else {
-                starters.push(slot);
-            }
+            starters.sort((a, b) => {
+                const pa = slotPriority[a.slot] ?? 999;
+                const pb = slotPriority[b.slot] ?? 999;
+                if (pa !== pb) return pa - pb;
+                return a.id - b.id;
+            });
+
+            // shape response for frontend
+            res.json({
+                leagueId,
+                team: {
+                    id: team.id,
+                    name: team.name,
+                    league: team.league,
+                    manager: team.manager ?? null,
+                },
+                week,
+                roster: {
+                    starters,
+                    bench,
+                    ir,
+                },
+            });
+        } catch (err) {
+            next(err);
         }
-
-        // order lineup by preferred order
-        const slotPriority: Record<SlotType, number> = {
-            QB: 1,
-            RB: 2,
-            WR: 3,
-            TE: 4,
-            FLEX: 5,
-            DST: 6,
-            K: 7,
-            BN: 99,
-            IR: 100,
-        };
-
-        starters.sort((a, b) => {
-            const pa = slotPriority[a.slot] ?? 999;
-            const pb = slotPriority[b.slot] ?? 999;
-            if (pa !== pb) return pa - pb;
-            return a.id - b.id;
-        });
-
-        // shape response for frontend
-        res.json({
-            leagueId,
-            team: {
-                id: team.id,
-                name: team.name,
-                league: team.league,
-                manager: team.manager ?? null,
-            },
-            week,
-            roster: {
-                starters,
-                bench,
-                ir,
-            },
-        });
-    } catch (err) {
-        next(err);
-    }
     }
 );

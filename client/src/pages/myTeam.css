@@ -1,3 +1,21 @@
 .my-team-table {
     min-width: 96vw;
 }
+
+.player-name-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.player-team-pos {
+    font-size: 0.8rem;
+    color: rgb(170, 170, 170);
+    margin-top: 1px;
+}
+
+.my-team-table-row td:nth-child(1) {
+    border-bottom: 1px solid white;
+    text-align: left;
+    width: 3.5rem;
+    padding: 0.7rem 0.2rem;
+}

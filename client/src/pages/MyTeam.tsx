@@ -102,19 +102,11 @@ export default function MyTeamPage() {
 
 function RosterTable({ slots }: { slots: RosterSlot[] }) {
     return (
-        <table className="my-team-table"
-            // style={{
-            //     width: "100%",
-            //     borderCollapse: "collapse",
-            //     fontSize: "0.9rem",
-            // }}
-        >
+        <table className="my-team-table">
             <thead>
                 <tr>
-                    <th style={thStyle}>Slot</th>
+                    <th className="my-team-slot" style={thStyle}>Slot</th>
                     <th style={thStyle}>Player</th>
-                    <th style={thStyle}>NFL Team</th>
-                    <th style={thStyle}>Pos</th>
                     <th style={thStyle}>Opp</th>
                     <th style={thStyle}>Status</th>
                     <th style={thStyle}>Projected</th>
@@ -141,11 +133,11 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
     const liveDisplay = slot.livePts != null ? slot.livePts.toFixed(1) : "-";
 
     return (
-        <tr>
-            <td style={tdStyle}>{slot.slot}</td>
+        <tr className="my-team-table-row">
+            <td >{slot.slot}</td>
             <td style={tdStyle}>
                 {hasPlayer ? (
-                    <span 
+                    <span
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -153,7 +145,7 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
                         }}
                     >
                         {headshot && (
-                            <img 
+                            <img
                                 src={headshot}
                                 alt={p!.name}
                                 style={{
@@ -165,20 +157,24 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
                                 }}
                             />
                         )}
-                    
-            
-                    <span>{p!.name}</span>
+
+                        <div className="player-name-container">
+                            <span>{p!.name}</span>
+                            <span className="player-team-pos">
+                                {nflTeam} {p!.position}
+                            </span>
+                        </div>
                     </span>
                 ) : (
                     <span style={{ color: "#999" }}>Empty</span>
                 )}
             </td>
-            <td style={tdStyle}>{hasPlayer ? nflTeam : "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? p!.position : "-"}</td>
+            {/* <td style={tdStyle}>{hasPlayer ? nflTeam : "-"}</td> */}
+            {/* <td style={tdStyle}>{hasPlayer ? p!.position : "-"}</td> */}
             <td style={tdStyle}>{hasPlayer ? opponentDisplay : "-"}</td>
             <td style={tdStyle}>{hasPlayer ? statusDisplay : "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? projDisplay: "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? liveDisplay: "-"}</td>
+            <td style={tdStyle}>{hasPlayer ? projDisplay : "-"}</td>
+            <td style={tdStyle}>{hasPlayer ? liveDisplay : "-"}</td>
         </tr>
     );
 }
@@ -190,6 +186,6 @@ const thStyle: React.CSSProperties = {
 };
 
 const tdStyle: React.CSSProperties = {
-    padding: "0.4rem 0.5rem",
-    borderBottom: "1px solid #eee",
+    
+    borderBottom: "1px solid rgba(238, 238, 238, 1)",
 }
