@@ -52,7 +52,11 @@ export type RosterSlot = {
         name: string;
         position: string;
         headshotUrl?: string | null;
-        team?: { abbr: string; name: string };
+        team?: { 
+            abbr: string; 
+            name: string;
+            logoUrl?: string | null;
+        };
     } | null;
     oppAbv?: string | null;
     kickoffIso?: string | null;

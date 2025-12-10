@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./myTeam.css";
 import { useParams } from "react-router-dom";
-import type { MyTeamApiResponse, RosterSlot, } from "../lib/api";
+import type { MyTeamApiResponse, RosterSlot } from "../lib/api";
 import { getMyTeam } from "../lib/api";
 
 export default function MyTeamPage() {
@@ -64,52 +64,54 @@ export default function MyTeamPage() {
         return <div style={{ padding: "1rem" }}> No roster data.</div>;
     }
 
-    const { team, roster } = data;
+    const { team, roster, week } = data;
     const { starters, bench, ir } = roster;
 
     return (
-        <div className="">
-            <header style={{ marginBottom: "1.5rem" }}>
-                <h1 style={{ margin: 0 }}>{team.name}</h1>
-                <div style={{ fontSize: "0.9 rem", color: "#555" }}>
+        <div className="myteam-page">
+            <header className="myteam-header">
+                <h1 className="myteam-title">{team.name}</h1>
+
+                <div className="myteam-meta">
                     League: <strong>{team.league.name}</strong>
                     {" • "}
                     Manager:{" "}
                     <strong>{team.manager ? team.manager.username : "Unassigned"}</strong>
                 </div>
 
-                <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
-                    Current Week: <strong>{data.week}</strong>
+                <div className="myteam-week">
+                    Current Week: <strong>{week}</strong>
                 </div>
             </header>
 
-            <section style={{ marginBottom: "2rem" }}>
-                <h2 style={{ marginBottom: "0.75rem" }}>Starters</h2>
+            <section className="myteam-section">
+                <h2 className="myteam-section-title">Starters</h2>
                 <RosterTable slots={starters} />
             </section>
 
-            <section style={{ marginBottom: "2rem" }}>
-                <h2 style={{ marginBottom: "0.75rem" }}>Bench</h2>
+            <section className="myteam-section">
+                <h2 className="myteam-section-title">Bench</h2>
                 <RosterTable slots={bench} />
             </section>
-            <section>
-                <h2 style={{ marginBottom: "0.75rem" }}>IR</h2>
+            <section className="myteam-section">
+                <h2 className="myteam-section-title">IR</h2>
                 <RosterTable slots={ir} />
             </section>
         </div>
     );
-};
+}
 
 function RosterTable({ slots }: { slots: RosterSlot[] }) {
     return (
-        <table className="my-team-table">
+        <table className="myteam-table">
             <thead>
                 <tr>
-                    <th className="my-team-slot" style={thStyle}>Slot</th>
-                    <th style={thStyle}>Player</th>
-                    <th style={thStyle}>Opp</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Projected</th>
+                    <th className="myteam-th slot">Slot</th>
+                    <th className="myteam-th">Player</th>
+                    <th className="myteam-th livescore">Live</th>
+                    <th className="myteam-th">Opp</th>
+                    <th className="myteam-th">Status</th>
+                    <th className="myteam-th">Projected</th>
                 </tr>
             </thead>
             <tbody>
@@ -121,11 +123,22 @@ function RosterTable({ slots }: { slots: RosterSlot[] }) {
     );
 }
 
+function dSTLabel(slot: RosterSlot["slot"]): string {
+    if (slot === "DST") return "D/ST";
+    return slot;
+}
+
 function RosterRow({ slot }: { slot: RosterSlot }) {
     const p = slot.player;
     const hasPlayer = !!p;
     const headshot = p?.headshotUrl ?? null;
-    const nflTeam = p?.team?.abbr ?? "-";
+
+    const team = p?.team;
+    const nflTeamAbbr = team?.abbr ?? "-";
+    const teamName = team?.name ?? "";
+    const logoUrl = team?.logoUrl ?? null;
+
+    const isDst = p?.position === "DST" || p?.position === "D/ST" || p?.position === "DEF";
 
     const statusDisplay = "-";
     const opponentDisplay = slot.oppAbv ?? "-";
@@ -133,59 +146,57 @@ function RosterRow({ slot }: { slot: RosterSlot }) {
     const liveDisplay = slot.livePts != null ? slot.livePts.toFixed(1) : "-";
 
     return (
-        <tr className="my-team-table-row">
-            <td >{slot.slot}</td>
-            <td style={tdStyle}>
-                {hasPlayer ? (
-                    <span
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                        }}
-                    >
-                        {headshot && (
-                            <img
-                                src={headshot}
-                                alt={p!.name}
-                                style={{
-                                    width: 38,
-                                    height: 38,
-                                    objectFit: "cover",
-                                    flexShrink: 0,
-                                    marginRight: "15px",
-                                }}
-                            />
-                        )}
+        <tr className="myteam-row">
+            <td className="myteam-td slot">{dSTLabel(slot.slot)}</td>
+            <td className="myteam-td">
+                {!hasPlayer ? (
+                    <span className="myteam-empty">Empty</span>
+                ) : (
+                    <div className="myteam-playerbox">
+                        <div className="myteam-avatar">
+                            {!isDst && headshot && (
+                                <img
+                                    className="myteam-headshot"
+                                    src={headshot}
+                                    alt={p!.name}
+                                />
+                            )}
 
-                        <div className="player-name-container">
-                            <span>{p!.name}</span>
-                            <span className="player-team-pos">
-                                {nflTeam} {p!.position}
+                            {isDst && logoUrl && (
+                                <img
+                                    className="myteam-dst-logo"
+                                    src={logoUrl}
+                                    alt={teamName || nflTeamAbbr}
+                                />
+                            )}
+                        </div>
+
+                        <div className="myteam-playertext">
+                            <span className="myteam-playername">
+                                {isDst && teamName ? teamName : p!.name}
+                            </span>
+
+                            <span className="myteam-subtext">
+                                {isDst
+                                    ? `${nflTeamAbbr} D/ST`
+                                    : `${nflTeamAbbr !== "-" ? nflTeamAbbr : ""}${nflTeamAbbr !== "-" ? " • " : ""}${p!.position}`
+                                }
                             </span>
                         </div>
-                    </span>
-                ) : (
-                    <span style={{ color: "#999" }}>Empty</span>
+                    </div>
                 )}
             </td>
-            {/* <td style={tdStyle}>{hasPlayer ? nflTeam : "-"}</td> */}
-            {/* <td style={tdStyle}>{hasPlayer ? p!.position : "-"}</td> */}
-            <td style={tdStyle}>{hasPlayer ? opponentDisplay : "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? statusDisplay : "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? projDisplay : "-"}</td>
-            <td style={tdStyle}>{hasPlayer ? liveDisplay : "-"}</td>
+            {/* <td className="myteam-td">{hasPlayer ? nflTeamAbbr : "-"}</td> */}
+            {/* <td className="myteam-td">{hasPlayer ? (isDst ? "D/ST" : p!.position) : "-"}</td> */}
+            <td className="myteam-td">{hasPlayer ? liveDisplay : "-"}</td>
+            <td className="myteam-td">{hasPlayer ? opponentDisplay : "-"}</td>
+            <td className="myteam-td">{hasPlayer ? statusDisplay : "-"}</td>
+            <td className="myteam-td">{hasPlayer ? projDisplay : "-"}</td>
+
         </tr>
     );
 }
 
-const thStyle: React.CSSProperties = {
-    textAlign: "left",
-    padding: "0.5rem",
-    borderBottom: "1px solid #ddd",
-};
 
-const tdStyle: React.CSSProperties = {
-    
-    borderBottom: "1px solid rgba(238, 238, 238, 1)",
-}
+
+

@@ -1,13 +1,125 @@
-.my-team-table {
-    min-width: 96vw;
+.myteam-page {
+    padding: 1.5rem;
+    margin: 0 auto;
+    min-width: 99vw;
 }
 
-.player-name-container {
+.myteam-table {
+    min-width: 97vw;
+}
+
+.myteam-header {
+    margin-bottom: 1.5rem;
+}
+
+.myteam-title {
+    margin: 0;
+}
+
+.myteam-meta {
+    font-size: 0.9rem;
+    color: rgb(85, 85, 85);
+}
+
+.myteam-week {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.myteam-section {
+    margin-bottom: 2rem;
+}
+
+.myteam-section-title {
+    margin-bottom: 0.75rem;
+}
+/* .my-team-table {
+    min-width: 96vw;
+} */
+.myteam-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.myteam-th {
+    text-align: left;
+    padding: 0.2rem;
+    border-bottom: 1px dotted rgb(221, 221, 221);
+}
+
+/* .myteam-th {
+    width: 1.5rem;
+} */
+
+/* .myteam-th livescore{
+
+} */
+.myteam-td {
+    padding: 0.4rem 0.3rem;
+    border-bottom:  1px dotted rgb(238, 238, 238);
+}
+
+.myteam-td.slot{
+    font-weight: 500;
+    width: 2.5rem;
+}
+
+/* .myteam-td number {
+    text-align: right;
+} */
+
+.myteam-empty {
+    color: rgb(153, 153, 153);
+}
+
+.myteam-playerbox {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.myteam-avatar {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.myteam-headshot {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+    
+}
+
+.myteam-dst-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.myteam-playertext {
     display: flex;
     flex-direction: column;
+    margin-left: 5px;
+    text-align:left
 }
 
-.player-team-pos {
+.myteam-playername {
+    font-weight: 500;
+}
+
+.myteam-subtext {
+    font-size: 0.78rem;
+    color: rgb(102, 102, 102);
+}
+
+
+
+/* .player-team-pos {
     font-size: 0.8rem;
     color: rgb(170, 170, 170);
     margin-top: 1px;
@@ -18,4 +130,4 @@
     text-align: left;
     width: 3.5rem;
     padding: 0.7rem 0.2rem;
-}
+} */
