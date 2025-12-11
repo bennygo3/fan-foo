@@ -24,8 +24,9 @@ export default function Players() {
     useEffect(() => {
         (async () => {
             try {
-                const allTeams = await getNflTeams();
-                setByAbbr(new Map(allTeams.map((t) => [t.abbr.toUpperCase(), t])));
+                const resp = await getNflTeams();
+                const allTeams: NflTeam[] = resp.items ?? [];
+                setByAbbr(new Map(allTeams.map((t: NflTeam) => [t.abbr.toUpperCase(), t])));
             } catch (e) {
                 console.error("Failed to load NFL teams", e);
             }
@@ -53,22 +54,22 @@ export default function Players() {
 
     const headerNote = useMemo(() => (isFetching ? "(refreshing...)" : ""), [isFetching]);
 
-    function fmtKickoff(iso?: string | null) {
-        if (!iso) return "TBD";
-        try {
-            const d = new Date(iso);
-            // need to refine later for timezones
-            return d.toLocaleString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-            });
-        } catch {
-            return iso;
-        }
-    }
+    // function fmtKickoff(iso?: string | null) {
+    //     if (!iso) return "TBD";
+    //     try {
+    //         const d = new Date(iso);
+    //         // need to refine later for timezones
+    //         return d.toLocaleString(undefined, {
+    //             weekday: "short",
+    //             month: "short",
+    //             day: "numeric",
+    //             hour: "numeric",
+    //             minute: "2-digit",
+    //         });
+    //     } catch {
+    //         return iso;
+    //     }
+    // }
 
     const onAdd = async (playerId: number) => {
         try {
@@ -151,8 +152,6 @@ export default function Players() {
             <div className={styles.table}>
                 <div className={styles.thead}>
                     <div className={styles.colPlayer}>Player</div>
-                    <div className={styles.colPos}>Pos</div>
-                    <div className={styles.colTeam}>Team</div>
                     <div className={styles.colOpp}>Opp</div>
                     <div className={`${styles.colProj} ${styles.right}`}>Proj</div>
                     <div className={`${styles.colAction} ${styles.center}`}>Action</div>
@@ -163,25 +162,57 @@ export default function Players() {
                 ) : (
                     <ul className={styles.tbody}>
                         {items.map((p) => {
+                            const teamMeta = p.teamAbv 
+                            ? byAbbr.get(p.teamAbv.toUpperCase())
+                            : undefined;
+                            
                             const isDst =
-                                p.position === "DST" ||
-                                p.position === "D/ST" ||
-                                p.position === "DEF";
+                            p.position === "DST" ||
+                            p.position === "D/ST" ||
+                            p.position === "DEF";
 
-                            const teamAbv = p.teamAbv ?? undefined;
-                            const team = teamAbv
-                                ? byAbbr.get(teamAbv.toUpperCase())
-                                : undefined;
-                            const logoUrl = team?.logoUrl ?? null;
-                            const teamName = team?.name ?? "";
+                            const logoUrl = isDst ? teamMeta?.logoUrl ?? null : null;
+
+                            // player column label
+                            const primaryName = isDst
+                            ? `${teamMeta?.name ?? p.teamAbv ?? "D/ST"} D/ST`
+                            : p.name;
+
+                            // subline under player or team name
+                            const subline = teamMeta 
+                            ? `${teamMeta.name} • ${isDst ? "D/ST" : p.position}`
+                            : `${p.teamAbv ?? ""} ${isDst ? "D/ST" : p.position}`;
+
+                            // opponent column
+                            let oppLine1 = "-";
+                            let oppLine2 = "";
+
+                            if (p.oppAbv && p.kickoffIso) {
+                                const d = new Date(p.kickoffIso);
+
+                                oppLine1 = `vs ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                })}`;
+
+                                oppLine2 = d.toLocaleTimeString(undefined, {
+                                    hour: "numeric",
+                                    minute: "2-digit"
+                                });
+                            }
+                            // const oppDetail = p.oppAbv 
+                            // ? `vs ${p.oppAbv} · ${fmtKickoff(p.kickoffIso)}`
+                            // : "-";
+
 
                             return (
                                 <li key={p.id} className={styles.row}>
                                     <div className={styles.playerCell}>
-                                        {isDst && logoUrl ? (
+                                        {logoUrl && isDst ? (
                                             <img
                                                 src={logoUrl}
-                                                alt={teamName || teamAbv || p.name}
+                                                alt={primaryName}
                                                 className={styles.teamLogo}
                                             />
                                         ) : p.headshot ? (
@@ -200,11 +231,10 @@ export default function Players() {
 
                                         <div>
                                             <div className={styles.name}>
-                                                {isDst && teamName ? teamName : p.name}
+                                                {primaryName}
                                             </div>
                                             <div className={styles.subline}>
-                                                {p.oppAbv ? `vs ${p.oppAbv}` : "-"} · {" "}
-                                                {fmtKickoff(p.kickoffIso)}
+                                                {subline}
                                             </div>
                                             {!p.available && p.managedBy ? (
                                                 <div className={styles.claimNote}>
@@ -214,12 +244,16 @@ export default function Players() {
                                             ) : null}
                                         </div>
                                     </div>
-
-                                    <div>{isDst ? "D/ST" : p.position}</div>
-                                    <div>{p.teamAbv ?? "FA"}</div>
-                                    <div>{p.oppAbv ?? "-"}</div>
-
-                                    <div className={styles.right}>
+                                    
+                                    {/* Opponent column */}
+                                    <div className={styles.colOppValue}>
+                                        <div className={styles.oppLine1}>{oppLine1}</div>
+                                        {oppLine2 && <div className={styles.oppLine2}>{oppLine2}</div>}
+                                    </div>
+                                    {/* <div className={styles.colOppValue}>{oppDetail}</div> */}
+                                    
+                                    {/* Projected points column */}
+                                    <div className={`${styles.colProj} ${styles.right}`}>
                                         {typeof p.projPts === "number" ? p.projPts.toFixed(1) : "-"}
                                     </div>
 

@@ -141,7 +141,38 @@
 .row:hover {
     background: #2b2f39;
 }
+.colPlayer {
+    flex: 3;
+}
 
+.colOpp {
+    flex: 2;
+    min-width: 200px;
+}
+
+.colProj {
+    flex: 1;
+}
+
+.colAction {
+    width: 80px;
+}
+
+.colOppValue {
+    display: flex;
+    flex-direction: column;
+    white-space: nowrap;
+    justify-content: center;
+    align-items: center;
+}
+.oppLine1 {
+    font-size: 0.9rem;
+}
+
+.oppLine2 {
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
 /* .colPlayer { }
 .colPos { }
 .colTeam { }
@@ -171,11 +202,12 @@
 }
 
 .teamLogo {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     object-fit: contain;
     border-radius: 2px;
     flex-shrink: 0;
+    margin-right: 0.5rem;
 }
 
 .headshotFallback {

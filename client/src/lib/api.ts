@@ -271,10 +271,10 @@ export type NflTeam = {
     abbr: string;
     name: string;
     logoUrl: string | null;
-    byeWeeks?: any;
+    // byeWeeks?: any;
 }
 
-export async function getNflTeams(): Promise<NflTeam[]> {
+export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
     const res = await fetch(`${API_BASE_URL}/teams`, {
         credentials: "include",
     });
@@ -284,18 +284,18 @@ export async function getNflTeams(): Promise<NflTeam[]> {
         throw new Error(`GET /teams failed: ${res.status} ${text}`);
     }
 
-    const data = await res.json();
+    return (await res.json()) as { items: NflTeam[] };
 
     // support both shapes `[{...}, ...]` or `{ items: [{...}, ...]}`
-    if (Array.isArray(data)) {
-        return data as NflTeam[];
-    }
+    // if (Array.isArray(data)) {
+    //     return data as NflTeam[];
+    // }
 
-    if (Array.isArray(data?.items)) {
-        return data.items as NflTeam[];
-    }
+    // if (Array.isArray(data?.items)) {
+    //     return data.items as NflTeam[];
+    // }
 
-    console.warn("unexpected /teams payload:", data);
-    return [];
+    // console.warn("unexpected /teams payload:", data);
+    // return [];
 }
     
