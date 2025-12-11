@@ -265,4 +265,37 @@ export async function dropPlayerFromRoster(opts: {
 
     return (await res.json()) as RosterMutationResponse;
 }
+
+export type NflTeam = {
+    id: number;
+    abbr: string;
+    name: string;
+    logoUrl: string | null;
+    byeWeeks?: any;
+}
+
+export async function getNflTeams(): Promise<NflTeam[]> {
+    const res = await fetch(`${API_BASE_URL}/teams`, {
+        credentials: "include",
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`GET /teams failed: ${res.status} ${text}`);
+    }
+
+    const data = await res.json();
+
+    // support both shapes `[{...}, ...]` or `{ items: [{...}, ...]}`
+    if (Array.isArray(data)) {
+        return data as NflTeam[];
+    }
+
+    if (Array.isArray(data?.items)) {
+        return data.items as NflTeam[];
+    }
+
+    console.warn("unexpected /teams payload:", data);
+    return [];
+}
     

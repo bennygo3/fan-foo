@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import styles from './players.module.css';
 import { useNFLPlayers } from "../hooks/usePlayers";
+import { getNflTeams, type NflTeam } from "../lib/api";
 import { useDebounced } from "../hooks/useDebounced";
 import { addPlayerToRoster } from "../lib/api";
 
@@ -12,11 +13,24 @@ const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 export default function Players() {
     const [search, setSearch] = useState("");
     const [position, setPosition] = useState("");
+    const [byAbbr, setByAbbr] = useState<Map<string, NflTeam>>(new Map());
     const [page, setPage] = useState(1);
     const [week, setWeek] = useState<number | string>("");
 
     const limit = 50;
     const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
+
+    // Load nfl teams once so logos can be used for d/st
+    useEffect(() => {
+        (async () => {
+            try {
+                const allTeams = await getNflTeams();
+                setByAbbr(new Map(allTeams.map((t) => [t.abbr.toUpperCase(), t])));
+            } catch (e) {
+                console.error("Failed to load NFL teams", e);
+            }
+        })();
+    }, []);
 
     const { data, isLoading, isError, error, isFetching, refetch } =
         useNFLPlayers({
@@ -102,7 +116,7 @@ export default function Players() {
                         aria-label="Filter by position"
                     >
                         <option value="">All</option>
-                        {POSITIONS.map(p => (
+                        {POSITIONS.map((p) => (
                             <option key={p} value={p}>{p}</option>
                         ))}
                     </select>
@@ -148,48 +162,81 @@ export default function Players() {
                     <div className={styles.playersState}>🧐 No players found</div>
                 ) : (
                     <ul className={styles.tbody}>
-                        {items.map((p) => (
-                            <li key={p.id} className={styles.row}>
-                                <div className={styles.playerCell}>
-                                    {p.headshot ? (
-                                        <img src={p.headshot} alt={p.name} width={50} height={50} className={styles.headshot} />
-                                    ) : (
-                                        <div className={styles.headshotFallback}>{p.position}</div>
-                                    )}
-                                    <div>
-                                        <div className={styles.name}>{p.name}</div>
-                                        <div className={styles.subline}>
-                                            {p.oppAbv ? `vs ${p.oppAbv}` : "-"} · {fmtKickoff(p.kickoffIso)}
-                                        </div>
-                                        {!p.available && p.managedBy ? (
-                                            <div className={styles.claimNote}>
-                                                {p.managedBy.managerTeamName} ({p.managedBy.managerName})
+                        {items.map((p) => {
+                            const isDst =
+                                p.position === "DST" ||
+                                p.position === "D/ST" ||
+                                p.position === "DEF";
+
+                            const teamAbv = p.teamAbv ?? undefined;
+                            const team = teamAbv
+                                ? byAbbr.get(teamAbv.toUpperCase())
+                                : undefined;
+                            const logoUrl = team?.logoUrl ?? null;
+                            const teamName = team?.name ?? "";
+
+                            return (
+                                <li key={p.id} className={styles.row}>
+                                    <div className={styles.playerCell}>
+                                        {isDst && logoUrl ? (
+                                            <img
+                                                src={logoUrl}
+                                                alt={teamName || teamAbv || p.name}
+                                                className={styles.teamLogo}
+                                            />
+                                        ) : p.headshot ? (
+                                            <img
+                                                src={p.headshot}
+                                                alt={p.name}
+                                                width={50}
+                                                height={50}
+                                                className={styles.headshot}
+                                            />
+                                        ) : (
+                                            <div className={styles.headshotFallback}>
+                                                {p.position}
                                             </div>
-                                        ) : null}
+                                        )}
+
+                                        <div>
+                                            <div className={styles.name}>
+                                                {isDst && teamName ? teamName : p.name}
+                                            </div>
+                                            <div className={styles.subline}>
+                                                {p.oppAbv ? `vs ${p.oppAbv}` : "-"} · {" "}
+                                                {fmtKickoff(p.kickoffIso)}
+                                            </div>
+                                            {!p.available && p.managedBy ? (
+                                                <div className={styles.claimNote}>
+                                                    {p.managedBy.managerTeamName} (
+                                                    {p.managedBy.managerName})
+                                                </div>
+                                            ) : null}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div>{p.position}</div>
-                                <div>{p.teamAbv ?? "FA"}</div>
-                                <div>{p.oppAbv ?? "-"}</div>
+                                    <div>{isDst ? "D/ST" : p.position}</div>
+                                    <div>{p.teamAbv ?? "FA"}</div>
+                                    <div>{p.oppAbv ?? "-"}</div>
 
-                                <div className={styles.right}>
-                                    {typeof p.projPts === "number" ? p.projPts.toFixed(1) : "-"}
-                                </div>
+                                    <div className={styles.right}>
+                                        {typeof p.projPts === "number" ? p.projPts.toFixed(1) : "-"}
+                                    </div>
 
-                                {/* Action: add */}
-                                <div className={styles.playersBtn}>
-                                    <button
-                                        className={styles.addBtn}
-                                        disabled={p.available === false}
-                                        onClick={() => onAdd(p.id)}
-                                        title={p.available === true ? "Add" : "N/A"}
-                                    >
-                                        +
-                                    </button>
-                                </div>
-                            </li>
-                        ))}
+                                    {/* Action: add */}
+                                    <div className={styles.playersBtn}>
+                                        <button
+                                            className={styles.addBtn}
+                                            disabled={p.available === false}
+                                            onClick={() => onAdd(p.id)}
+                                            title={p.available === true ? "Add" : "N/A"}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </div>
