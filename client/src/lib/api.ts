@@ -200,6 +200,33 @@ export async function addPlayerToRoster(opts: {
     return (await res.json()) as RosterMutationResponse;
 }
 
+export async function dropPlayerFromRoster(opts: {
+    leagueId: number;
+    teamId: number;
+    rosterSlotId: number;
+}) {
+    const res = await fetch(
+        `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                rosterSlotId: opts.rosterSlotId,
+            }),
+        }
+    );
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+            `POST /leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop failed ${text}`
+        );
+    }
+
+    return (await res.json()) as RosterMutationResponse;
+}
+
 export type DSTProjections = {
     teamAbv: string;
     projPts: number;
@@ -239,63 +266,65 @@ export async function getDSTProjections(params: {
     };
 }
 
-export async function dropPlayerFromRoster(opts: {
-    leagueId: number;
-    teamId: number;
-    rosterSlotId: number;
-}) {
-    const res = await fetch(
-        `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop`,
-        {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                rosterSlotId: opts.rosterSlotId,
-            }),
-        }
-    );
-
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-            `POST /leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop failed ${text}`
-        );
-    }
-
-    return (await res.json()) as RosterMutationResponse;
-}
-
 export type NflTeam = {
     id: number;
     abbr: string;
     name: string;
     logoUrl: string | null;
-    // byeWeeks?: any;
-}
+    byeWeeksBySeason?: Record<string, number> | null;
+};
 
 export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
-    const res = await fetch(`${API_BASE_URL}/teams`, {
-        credentials: "include",
-    });
+    const res = await fetch(`${API_BASE_URL}/teams`, { credentials: "include" });
 
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`GET /teams failed: ${res.status} ${text}`);
+        throw new Error(`GET /teams failed: ${res.status} ${await res.text()}`);
     }
 
     return (await res.json()) as { items: NflTeam[] };
 
-    // support both shapes `[{...}, ...]` or `{ items: [{...}, ...]}`
-    // if (Array.isArray(data)) {
-    //     return data as NflTeam[];
-    // }
+}
 
-    // if (Array.isArray(data?.items)) {
-    //     return data.items as NflTeam[];
-    // }
+// export async function getNflTeams(): Promise<NflTeam[]> {
+//     const res = await fetch(`${API_BASE_URL}/teams`, {
+//         credentials: "include",
+//     });
 
-    // console.warn("unexpected /teams payload:", data);
-    // return [];
+//     if (!res.ok) {
+//         const text = await res.text();
+//         throw new Error(`GET /teams failed: ${res.status} ${text}`);
+//     }
+
+//     // return (await res.json()) as { items: NflTeam[] };
+//     const data = await res.json();
+
+//     // support both shapes `[{...}, ...]` or `{ items: [{...}, ...]}`
+//     if (Array.isArray(data)) {
+//         return data as NflTeam[];
+//     }
+
+//     if (Array.isArray(data?.items)) {
+//         return data.items as NflTeam[];
+//     }
+
+//     console.warn("unexpected /teams payload:", data);
+//     return [];
+// }
+
+export type Game = {
+    week: number;
+    season: number;
+    startTime: string | null;
+    homeTeam: { abbr: string };
+    awayTeam: { abbr: string };
+}
+
+export async function getSchedule(params: { week?: number | string }) {
+    const url = new URL(`${API_BASE_URL}/nfl/schedule`);
+    if (params.week !== undefined && params.week !== "") url.searchParams.set("week", String(params.week));
+
+    const res = await fetch(url.toString(), { credentials: "include" });
+    if (!res.ok) throw new Error(`GET /nfl/schedule failed: ${res.status} ${await res.text()}`);
+    return (await res.json()) as Game[];
 }
     

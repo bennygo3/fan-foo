@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
 import styles from './players.module.css';
-import { useNFLPlayers } from "../hooks/usePlayers";
-import { getNflTeams, type NflTeam } from "../lib/api";
 import { useDebounced } from "../hooks/useDebounced";
+import { useNFLPlayers } from "../hooks/usePlayers";
+import { getNflTeams, type NflTeam, getSchedule } from "../lib/api";
+import type { Game } from "../lib/api";
 import { addPlayerToRoster } from "../lib/api";
 
 const LEAGUE_ID = 1; // can adjust later if app expands to designate actual league id number
@@ -16,35 +17,24 @@ export default function Players() {
     const [byAbbr, setByAbbr] = useState<Map<string, NflTeam>>(new Map());
     const [page, setPage] = useState(1);
     const [week, setWeek] = useState<number | string>("");
+    const [venueByTeam, setVenueByTeam] = useState<
+        Map<string, { isHome: boolean; oppAbbr: string }>
+    >(new Map());
 
     const limit = 50;
     const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
 
-    // Load nfl teams once so logos can be used for d/st
-    useEffect(() => {
-        (async () => {
-            try {
-                const resp = await getNflTeams();
-                const allTeams: NflTeam[] = resp.items ?? [];
-                setByAbbr(new Map(allTeams.map((t: NflTeam) => [t.abbr.toUpperCase(), t])));
-            } catch (e) {
-                console.error("Failed to load NFL teams", e);
-            }
-        })();
-    }, []);
-
-    const { data, isLoading, isError, error, isFetching, refetch } =
-        useNFLPlayers({
-            season: "2025",
-            week,
-            search: debouncedSearch,
-            position,
-            page,
-            limit,
-            sort: "proj",
-            leagueId: LEAGUE_ID,
-            staleTime: 60 * 60 * 1000, // 1h cache while building
-        });
+    const { data, isLoading, isError, error, isFetching, refetch } = useNFLPlayers({
+        season: "2025",
+        week,
+        search: debouncedSearch,
+        position,
+        page,
+        limit,
+        sort: "proj",
+        leagueId: LEAGUE_ID,
+        staleTime: 60 * 60 * 1000, // 1h cache while building
+    });
 
     const items = data?.items ?? [];
     const total = data?.total ?? items.length;
@@ -54,22 +44,56 @@ export default function Players() {
 
     const headerNote = useMemo(() => (isFetching ? "(refreshing...)" : ""), [isFetching]);
 
-    // function fmtKickoff(iso?: string | null) {
-    //     if (!iso) return "TBD";
-    //     try {
-    //         const d = new Date(iso);
-    //         // need to refine later for timezones
-    //         return d.toLocaleString(undefined, {
-    //             weekday: "short",
-    //             month: "short",
-    //             day: "numeric",
-    //             hour: "numeric",
-    //             minute: "2-digit",
-    //         });
-    //     } catch {
-    //         return iso;
-    //     }
-    // }
+    // Load nfl teams once so logos can be used for d/st
+        useEffect(() => {
+        (async () => {
+            try {
+                const resp = await getNflTeams();
+                const allTeams = resp.items ?? [];
+                setByAbbr(new Map(allTeams.map((t) => [t.abbr.toUpperCase(), t])));
+            } catch (e) {
+                console.error("Failed to load NFL teams", e);
+                setByAbbr(new Map());
+            }
+        })();
+    }, []);
+    // useEffect(() => {
+    //     (async () => {
+    //         try {
+    //             const allTeams = await getNflTeams();
+    //             setByAbbr(new Map(allTeams.map((t) => [t.abbr.toUpperCase(), t])));
+    //         } catch (e) {
+    //             console.error("Failed to load NFL teams", e);
+    //             setByAbbr(new Map());
+    //         }
+    //     })();
+    // }, []);
+
+    useEffect(() => {
+        const effectiveWeek =
+            week !== "" && week != null ? Number(week) : Number(serverWeek);
+
+        if (!Number.isFinite(effectiveWeek) || !effectiveWeek) return;
+
+        (async () => {
+            try {
+                const games: Game[] = await getSchedule({ week: effectiveWeek });
+                const m = new Map<string, { isHome: boolean; oppAbbr: string }>();
+
+                for (const g of games) {
+                    const home = g.homeTeam.abbr.toUpperCase();
+                    const away = g.awayTeam.abbr.toUpperCase();
+                    m.set(home, { isHome: true, oppAbbr: away });
+                    m.set(away, { isHome: false, oppAbbr: home });
+                }
+
+                setVenueByTeam(m);
+            } catch (e) {
+                console.error("Failed to load schedule", e);
+                setVenueByTeam(new Map());
+            }
+        })();
+    }, [week, serverWeek]);
 
     const onAdd = async (playerId: number) => {
         try {
@@ -102,7 +126,10 @@ export default function Players() {
                     <input
                         className={styles.playersSearchInput}
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setPage(1);
+                        }}
                         placeholder="Search for a player..."
                         aria-label="Search players"
                     />
@@ -148,13 +175,13 @@ export default function Players() {
                 <span>Page {page} / {pageCount}</span>
             </div>
 
-            {/* Table view with Header Row */}
+            {/* Table Header Row */}
             <div className={styles.table}>
                 <div className={styles.thead}>
                     <div className={styles.colPlayer}>Player</div>
                     <div className={styles.colOpp}>Opp</div>
-                    <div className={`${styles.colProj} ${styles.right}`}>Proj</div>
-                    <div className={`${styles.colAction} ${styles.center}`}>Action</div>
+                    <div className={`${styles.colProj}`}>Proj</div>
+                    <div className={`${styles.colAction}`}>Action</div>
                 </div>
 
                 {items.length === 0 ? (
@@ -162,35 +189,56 @@ export default function Players() {
                 ) : (
                     <ul className={styles.tbody}>
                         {items.map((p) => {
-                            const teamMeta = p.teamAbv 
-                            ? byAbbr.get(p.teamAbv.toUpperCase())
-                            : undefined;
-                            
+                            const teamMeta = p.teamAbv
+                                ? byAbbr.get(p.teamAbv.toUpperCase())
+                                : undefined;
+
                             const isDst =
-                            p.position === "DST" ||
-                            p.position === "D/ST" ||
-                            p.position === "DEF";
+                                p.position === "DST" ||
+                                p.position === "D/ST" ||
+                                p.position === "DEF";
 
                             const logoUrl = isDst ? teamMeta?.logoUrl ?? null : null;
 
                             // player column label
                             const primaryName = isDst
-                            ? `${teamMeta?.name ?? p.teamAbv ?? "D/ST"} D/ST`
-                            : p.name;
+                                ? `${teamMeta?.name ?? p.teamAbv ?? "D/ST"} D/ST`
+                                : p.name;
 
                             // subline under player or team name
-                            const subline = teamMeta 
-                            ? `${teamMeta.name} • ${isDst ? "D/ST" : p.position}`
-                            : `${p.teamAbv ?? ""} ${isDst ? "D/ST" : p.position}`;
+                            const subline = teamMeta
+                                ? `${teamMeta.name} • ${isDst ? "D/ST" : p.position}`
+                                : `${p.teamAbv ?? ""} ${isDst ? "D/ST" : p.position}`;
 
-                            // opponent column
+                            //compute bye from the player's team
+                            const effectiveSeason = String(serverSeason ?? "2025");
+                            const effectiveWeek = week !== "" && week != null ? Number(week) : Number(serverWeek);
+
+                            const byeWeekForTeam = teamMeta?.byeWeeksBySeason?.[effectiveSeason];
+                            const isBye = Number.isFinite(effectiveWeek) && Number(byeWeekForTeam) === Number(effectiveWeek);
+
+                            if (p.teamAbv === "LAC") {
+                                console.log({
+                                    team: p.teamAbv,
+                                    effectiveSeason,
+                                    effectiveWeek,
+                                    byeWeekForTeam,
+                                    isBye,
+                                });
+                            }
+
+                            const venue = p.teamAbv ? venueByTeam.get(p.teamAbv.toUpperCase()) : undefined;
+                            const atVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
+
                             let oppLine1 = "-";
                             let oppLine2 = "";
 
-                            if (p.oppAbv && p.kickoffIso) {
+                            if (isBye) {
+                                oppLine1 = "BYE";
+                            } else if (p.oppAbv && p.kickoffIso) {
                                 const d = new Date(p.kickoffIso);
 
-                                oppLine1 = `vs ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
+                                oppLine1 = `${atVs} ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
                                     weekday: "short",
                                     month: "short",
                                     day: "numeric",
@@ -201,10 +249,6 @@ export default function Players() {
                                     minute: "2-digit"
                                 });
                             }
-                            // const oppDetail = p.oppAbv 
-                            // ? `vs ${p.oppAbv} · ${fmtKickoff(p.kickoffIso)}`
-                            // : "-";
-
 
                             return (
                                 <li key={p.id} className={styles.row}>
@@ -238,22 +282,20 @@ export default function Players() {
                                             </div>
                                             {!p.available && p.managedBy ? (
                                                 <div className={styles.claimNote}>
-                                                    {p.managedBy.managerTeamName} (
-                                                    {p.managedBy.managerName})
+                                                    {p.managedBy.managerTeamName} ({p.managedBy.managerName})
                                                 </div>
                                             ) : null}
                                         </div>
                                     </div>
-                                    
-                                    {/* Opponent column */}
+
+                                    {/* Opp column */}
                                     <div className={styles.colOppValue}>
                                         <div className={styles.oppLine1}>{oppLine1}</div>
                                         {oppLine2 && <div className={styles.oppLine2}>{oppLine2}</div>}
                                     </div>
-                                    {/* <div className={styles.colOppValue}>{oppDetail}</div> */}
-                                    
+
                                     {/* Projected points column */}
-                                    <div className={`${styles.colProj} ${styles.right}`}>
+                                    <div className={`${styles.colProj}`}>
                                         {typeof p.projPts === "number" ? p.projPts.toFixed(1) : "-"}
                                     </div>
 

@@ -1,5 +1,7 @@
 import { prisma } from "src/lib/prisma";
 import { tankGetTeamsWithRosters } from "src/routes/services/tank-call";
+import { normalizeByeWeeksBySeason } from "src/lib/byeWeeks";
+import { Prisma } from "@prisma/client";
 
 async function main() {
     const season = "2025";
@@ -15,11 +17,12 @@ async function main() {
         const logoUrl = row.espnLogo1 ?? row.nflComLogo1 ?? null;
 
         const byeWeeks = row.byeWeeks ?? null;
+        const byeWeeksBySeason = normalizeByeWeeksBySeason(byeWeeks);
 
         await prisma.team.upsert({
             where: { abbr },
-            update: {name, logoUrl, byeWeeks },
-            create: { abbr, name, logoUrl, byeWeeks },
+            update: {name, logoUrl, byeWeeks, ...(byeWeeksBySeason ? { byeWeeksBySeason } : {}), },
+            create: { abbr, name, logoUrl, byeWeeks, ...(byeWeeksBySeason ? { byeWeeksBySeason } : {}), },
         });
         console.log("Upserted team", abbr, name);
     }

@@ -12,7 +12,7 @@ router.get("/", async (_req, res) => {
                 abbr: true,
                 name: true,
                 logoUrl: true,
-                byeWeeks: true,
+                byeWeeksBySeason: true,
             },
             orderBy: { name: "asc" } 
         });
