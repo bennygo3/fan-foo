@@ -18,7 +18,7 @@ export default function Players() {
     const [page, setPage] = useState(1);
     const [week, setWeek] = useState<number | string>("");
     const [venueByTeam, setVenueByTeam] = useState<
-        Map<string, { isHome: boolean; oppAbbr: string }>
+        Map<string, { isHome: boolean; oppAbbr: string; kickoffIso: string | null }>
     >(new Map());
 
     const limit = 50;
@@ -57,17 +57,6 @@ export default function Players() {
             }
         })();
     }, []);
-    // useEffect(() => {
-    //     (async () => {
-    //         try {
-    //             const allTeams = await getNflTeams();
-    //             setByAbbr(new Map(allTeams.map((t) => [t.abbr.toUpperCase(), t])));
-    //         } catch (e) {
-    //             console.error("Failed to load NFL teams", e);
-    //             setByAbbr(new Map());
-    //         }
-    //     })();
-    // }, []);
 
     useEffect(() => {
         const effectiveWeek =
@@ -78,15 +67,16 @@ export default function Players() {
         (async () => {
             try {
                 const games: Game[] = await getSchedule({ week: effectiveWeek });
-                const m = new Map<string, { isHome: boolean; oppAbbr: string }>();
+                const m = new Map<string, { isHome: boolean; oppAbbr: string; kickoffIso: string | null }>();
 
                 for (const g of games) {
                     const home = g.homeTeam.abbr.toUpperCase();
                     const away = g.awayTeam.abbr.toUpperCase();
-                    m.set(home, { isHome: true, oppAbbr: away });
-                    m.set(away, { isHome: false, oppAbbr: home });
+                    const kickoffIso = g.startTime ?? null;
+                    
+                    m.set(home, { isHome: true, oppAbbr: away, kickoffIso });
+                    m.set(away, { isHome: false, oppAbbr: home, kickoffIso });
                 }
-
                 setVenueByTeam(m);
             } catch (e) {
                 console.error("Failed to load schedule", e);
@@ -228,27 +218,62 @@ export default function Players() {
                             }
 
                             const venue = p.teamAbv ? venueByTeam.get(p.teamAbv.toUpperCase()) : undefined;
-                            const atVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
 
                             let oppLine1 = "-";
                             let oppLine2 = "";
 
                             if (isBye) {
                                 oppLine1 = "BYE";
-                            } else if (p.oppAbv && p.kickoffIso) {
-                                const d = new Date(p.kickoffIso);
+                            } else {
+                                // player-pool data if present is preferred; if not fall back to schedule-derived data
+                                const oppAbbr = p.oppAbv ?? venue?.oppAbbr ?? null;
+                                const kickoffIso = p.kickoffIso ?? venue?.kickoffIso ?? null;
 
-                                oppLine1 = `${atVs} ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
-                                    weekday: "short",
-                                    month: "short",
-                                    day: "numeric",
-                                })}`;
+                                if (oppAbbr && kickoffIso) {
+                                    const atOrVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
+                                    const d = new Date(kickoffIso);
 
-                                oppLine2 = d.toLocaleTimeString(undefined, {
-                                    hour: "numeric",
-                                    minute: "2-digit"
-                                });
+                                    oppLine1 = `${atOrVs} ${oppAbbr} • ${d.toLocaleDateString(undefined, {
+                                        weekday: "short",
+                                        month: "short",
+                                        day: "numeric",
+                                    })}`;
+
+                                    oppLine2 = d.toLocaleTimeString(undefined, {
+                                        hour: "numeric",
+                                        minute: "2-digit",
+                                    });
+                                } else if (oppAbbr) {
+                                    // if we know opponent, show the opponent even if kickoff time (flex and not set times) is missing
+                                    const atOrVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
+                                    oppLine1 = `${atOrVs} ${oppAbbr}`;
+                                } else {
+                                    oppLine1 = "-";
+                                }
                             }
+
+                            // const venue = p.teamAbv ? venueByTeam.get(p.teamAbv.toUpperCase()) : undefined;
+                            // const atVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
+
+                            // let oppLine1 = "-";
+                            // let oppLine2 = "";
+
+                            // if (isBye) {
+                            //     oppLine1 = "BYE";
+                            // } else if (p.oppAbv && p.kickoffIso) {
+                            //     const d = new Date(p.kickoffIso);
+
+                            //     oppLine1 = `${atVs} ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
+                            //         weekday: "short",
+                            //         month: "short",
+                            //         day: "numeric",
+                            //     })}`;
+
+                            //     oppLine2 = d.toLocaleTimeString(undefined, {
+                            //         hour: "numeric",
+                            //         minute: "2-digit"
+                            //     });
+                            // }
 
                             return (
                                 <li key={p.id} className={styles.row}>

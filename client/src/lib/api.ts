@@ -276,13 +276,8 @@ export type NflTeam = {
 
 export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
     const res = await fetch(`${API_BASE_URL}/teams`, { credentials: "include" });
-
-    if (!res.ok) {
-        throw new Error(`GET /teams failed: ${res.status} ${await res.text()}`);
-    }
-
+    if (!res.ok) { throw new Error(`GET /teams failed: ${res.status} ${await res.text()}`); }
     return (await res.json()) as { items: NflTeam[] };
-
 }
 
 // export async function getNflTeams(): Promise<NflTeam[]> {
