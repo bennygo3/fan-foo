@@ -19,6 +19,7 @@ type RosterSlotWithPlayer = Prisma.RosterSlotGetPayload<{
                         name: true;
                         byeWeeks: true;
                         logoUrl: true;
+                        byeWeeksBySeason: true;
                     };
                 };
             };
@@ -78,6 +79,7 @@ myTeamRouter.get(
                                     name: true,
                                     byeWeeks: true,
                                     logoUrl: true,
+                                    byeWeeksBySeason: true,
                                 },
                             },
                         },
@@ -88,22 +90,32 @@ myTeamRouter.get(
 
             const games = await prisma.game.findMany({
                 where: { season, week },
-                include: { homeTeam: true, awayTeam: true },
+                include: {
+                    homeTeam: { select: { abbr: true } },
+                    awayTeam: { select: { abbr: true } },
+                },
             });
 
-            const matchupByTeamAbbr = new Map<string, { oppAbv: string; kickoffIso: string | null }>();
+            const matchupByTeamAbbr = new Map<
+                string, 
+                { oppAbv: string; kickoffIso: string | null; isHome: boolean }
+            >();
 
             for (const g of games) {
                 const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+                const homeAbbr = g.homeTeam.abbr.toUpperCase();
+                const awayAbbr = g.awayTeam.abbr.toUpperCase();
 
-                matchupByTeamAbbr.set(g.awayTeam.abbr, {
-                    oppAbv: g.homeTeam.abbr,
+                matchupByTeamAbbr.set(awayAbbr, {
+                    oppAbv: homeAbbr,
                     kickoffIso,
+                    isHome: false,
                 });
 
-                matchupByTeamAbbr.set(g.homeTeam.abbr, {
-                    oppAbv: g.awayTeam.abbr,
+                matchupByTeamAbbr.set(homeAbbr, {
+                    oppAbv: awayAbbr,
                     kickoffIso,
+                    isHome: true,
                 });
             }
 
@@ -111,16 +123,12 @@ myTeamRouter.get(
             const dstProjMap = new Map<string, number>(); // teamAbv -> projPts
 
             try {
-                const projResp = await tankGetProjections({
-                    week,
-                    season,
-                });
+                const projResp = await tankGetProjections({ week, season });
 
                 const rows = extractPlayerProjections(projResp);
                 for (const r of rows) {
                     const id = String(r?.playerID ?? r?.espnID ?? "");
                     if (!id) continue;
-
                     const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
                     projMap.set(id, Number.isFinite(projPts) ? projPts : 0);
                 }
@@ -149,31 +157,27 @@ myTeamRouter.get(
                 console.error("[roster] projection error:", err);
             }
 
-            const decorated = slots.map((slot, idx) => {
+            const decorated = slots.map((slot) => {
                 const p = slot.player;
-                const teamAbv = p?.team?.abbr ?? null;
-                const byeWeeks = p?.team?.byeWeeks as any | undefined;
+                const teamAbv = p?.team?.abbr ? p.team.abbr.toUpperCase() : null;
 
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
 
-                let oppAbv: string | null = null;
+                const byeWeeksBySeason = (p?.team?.byeWeeksBySeason ?? null) as Record<string, number> | null;
 
-                if (matchup) {
-                    oppAbv = matchup.oppAbv;
-                } else if (teamAbv && byeWeeks) {
-                    // byeWeeks should be json. treat it as a map
-                    const byeForSeason = byeWeeks[String(season)];
-                    if (Number(byeForSeason) === week) {
-                        oppAbv = "BYE";
-                    }
-                }
+                const byeWeekForSeason = teamAbv && byeWeeksBySeason ? byeWeeksBySeason[String(season)] : null;
+
+                const isBye = Number(byeWeekForSeason) === Number(week);
+
+                const oppAbv = matchup ? matchup.oppAbv : isBye ? "BYE" : null;
+                const kickoffIso = matchup?.kickoffIso ?? null;
 
                 let projPts: number | null = null;
 
                 if (p) {
                     if (p.position === "DST") {
                         projPts = teamAbv
-                            ? dstProjMap.get(teamAbv.toUpperCase()) ?? null
+                            ? dstProjMap.get(teamAbv) ?? null
                             : null;
                     } else {
                         const externalProj = p.externalId
@@ -181,23 +185,13 @@ myTeamRouter.get(
                             : null;
                         projPts = externalProj ?? p.projPts ?? null;
                     }
-
-                    if (idx < 3) {
-                        console.log("[roster debug]", {
-                            slotId: slot.id,
-                            name: p.name,
-                            pos: p.position,
-                            teamAbv,
-                            externalId: p.externalId,
-                            projPts,
-                        });
-                    }
                 }
 
                 return {
                     ...slot,
                     oppAbv,
-                    kickoffIso: matchup?.kickoffIso ?? null,
+                    kickoffIso,
+                    isHome: matchup?.isHome ?? null,
                     projPts,
                     livePts: null, // TODO: wire up live scoring
                 };
@@ -247,11 +241,7 @@ myTeamRouter.get(
                     manager: team.manager ?? null,
                 },
                 week,
-                roster: {
-                    starters,
-                    bench,
-                    ir,
-                },
+                roster: { starters, bench, ir },
             });
         } catch (err) {
             next(err);

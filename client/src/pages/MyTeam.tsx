@@ -13,6 +13,7 @@ export default function MyTeamPage() {
     const [data, setData] = useState<MyTeamApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
 
     useEffect(() => {
         if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
@@ -47,6 +48,13 @@ export default function MyTeamPage() {
             isCancelled = true;
         };
     }, [leagueId, teamId]);
+
+    function isGameLocked(kickoffIso?: string | null) {
+        if (!kickoffIso) return false;
+        const t = Date.parse(kickoffIso);
+        if (!Number.isFinite(t)) return false;
+        return t <= Date.now();    
+    }
 
     if (loading) {
         return <div style={{ padding: "1rem" }}>Loading roster...</div>
