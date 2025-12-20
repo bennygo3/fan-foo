@@ -77,7 +77,6 @@ myTeamRouter.get(
                                     id: true,
                                     abbr: true,
                                     name: true,
-                                    byeWeeks: true,
                                     logoUrl: true,
                                     byeWeeksBySeason: true,
                                 },
@@ -160,7 +159,6 @@ myTeamRouter.get(
             const decorated = slots.map((slot) => {
                 const p = slot.player;
                 const teamAbv = p?.team?.abbr ? p.team.abbr.toUpperCase() : null;
-
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
 
                 const byeWeeksBySeason = (p?.team?.byeWeeksBySeason ?? null) as Record<string, number> | null;
@@ -173,7 +171,6 @@ myTeamRouter.get(
                 const kickoffIso = matchup?.kickoffIso ?? null;
 
                 let projPts: number | null = null;
-
                 if (p) {
                     if (p.position === "DST") {
                         projPts = teamAbv
@@ -241,7 +238,148 @@ myTeamRouter.get(
                     manager: team.manager ?? null,
                 },
                 week,
+                season,
                 roster: { starters, bench, ir },
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+myTeamRouter.post(
+    "/:leagueId/teams/:teamId/roster/move",
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const leagueId = Number(req.params.leagueId);
+            const teamId = Number(req.params.teamId);
+
+            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+                return res.status(400).json({ error: "Invalid league id or team id" });
+            }
+
+            const fromRosterSlotId = Number(req.body?.fromRosterSlotId);
+            const toRosterSlotId = Number(req.body?.toRosterSlotId);
+
+            if (!Number.isFinite(fromRosterSlotId) || !Number.isFinite(toRosterSlotId)) {
+                return res.status(400).json({ error: "Invalid move from/to" });
+            }
+
+            if (fromRosterSlotId === toRosterSlotId) {
+                return res.json({ message: "No-op", moved: false });
+            }
+
+            const slots = await prisma.rosterSlot.findMany({
+                where: {
+                    id: { in: [fromRosterSlotId, toRosterSlotId] },
+                    leagueId,
+                    teamId,
+                },
+                include: {
+                    player: {
+                        include: {
+                            team: { select: { abbr: true } },
+                        },
+                    },
+                },
+            });
+
+            const fromSlot = slots.find((s) => s.id === fromRosterSlotId) ?? null;
+            const toSlot = slots.find((s) => s.id === toRosterSlotId) ?? null;
+
+            if (!fromSlot || !toSlot) {
+                return res.status(404).json({ error: "Roster slot not found for this team" });
+            }
+
+            if (!fromSlot.playerId || !fromSlot.player?.position) {
+                return res.status(400).json({ error: "No player in source slot" });
+            }
+
+            const seasonParam = req.query.season as string | undefined;
+            const weekParam = req.query.week as string | undefined;
+
+            let season: number;
+            let week: number;
+
+            if (seasonParam && weekParam) {
+                season = Number(seasonParam);
+                week = Number(weekParam);
+            } else {
+                const current = await getCurrentSeasonWeek();
+                season = current.season;
+                week = current.week;
+            }
+
+            // build kickoffByTeam from schedule
+            const games = await prisma.game.findMany({
+                where: { season, week },
+                include: { homeTeam: { select: { abbr: true } }, awayTeam: { select: { abbr: true } } },
+            });
+
+            const kickoffByTeam = new Map<string, string | null>();
+            for (const g of games) {
+                const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+                kickoffByTeam.set(g.homeTeam.abbr.toUpperCase(), kickoffIso);
+                kickoffByTeam.set(g.awayTeam.abbr.toUpperCase(), kickoffIso);
+            }
+
+            const fromTeamAbbr = fromSlot.player?.team?.abbr?.toUpperCase() ?? null;
+            const fromKickoff = fromTeamAbbr ? kickoffByTeam.get(fromTeamAbbr) ?? null : null;
+
+            let toKickoff: string | null = null;
+            if (toSlot.playerId && toSlot.player?.team?.abbr) {
+                const abbr = toSlot.player.team.abbr.toUpperCase();
+                toKickoff = kickoffByTeam.get(abbr) ?? null;
+            }
+
+            if (isGameLocked(fromKickoff) ||isGameLocked(toKickoff)) {
+                return res.status(409).json({ error: "Player is locked. Game has already started" });
+            }
+
+            const movingPos = fromSlot.player.position;
+
+            if (!slotCanAcceptPlayer(toSlot.slot, movingPos)) {
+                return res.status(409).json({
+                    error: `Illegal move: ${movingPos} cannot go into ${toSlot.slot}`,
+                });
+            }
+
+            // if swapping, validate the opposite direction too
+            if (toSlot.playerId && toSlot.player?.position) {
+                const otherPos = toSlot.player.position;
+                if (!slotCanAcceptPlayer(fromSlot.slot, otherPos)) {
+                    return res.status(409).json({
+                        error: `Illegal swap: ${otherPos} cannot go into ${fromSlot.slot}`,
+                    });
+                }
+            }
+
+            const result = await prisma.$transaction(async (tx) => {
+                const fromPlayerId = fromSlot.playerId!;
+                const toPlayerId = toSlot.playerId ?? null;
+
+                await tx.rosterSlot.update({
+                    where: { id: fromSlot.id },
+                    data: { playerId: toPlayerId },
+                });
+
+                await tx.rosterSlot.update({
+                    where: { id: toSlot.id },
+                    data: { playerId: fromPlayerId },
+                });
+
+                return {
+                    fromRosterSlotId: fromSlot.id,
+                    toRosterSlotId: toSlot.id,
+                    swapped: !!toPlayerId,
+                };
+            });
+
+            res.json({
+                message: result.swapped ? "Swapped" : "Moved",
+                ...result,
+                season,
+                week,
             });
         } catch (err) {
             next(err);
