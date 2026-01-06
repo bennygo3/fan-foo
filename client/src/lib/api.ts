@@ -162,7 +162,45 @@ export async function getPlayerPool(opts: {
     }
 
     return (await res.json()) as Paginated<Player>;
+}
 
+export async function moveRosterSlot(opts: {
+    leagueId: number;
+    teamId: number;
+    fromRosterSlotId: number;
+    toRosterSlotId: number;
+    season?: number | string;
+    week?: number | string;
+}) {
+    const url = new URL(`${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/move`);
+    if (opts.season !== undefined && opts.season !== "") url.searchParams.set("season", String(opts.season));
+    if (opts.week !== undefined && opts.week !== "") url.searchParams.set("week", String(opts.week));
+
+    const res = await fetch(url.toString(), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            fromRosterSlotId: opts.fromRosterSlotId,
+            toRosterSlotId: opts.toRosterSlotId,
+        }),
+    });
+
+    const text = await res.text();
+    const payload = text ? JSON.parse(text) : null;
+
+    if (!res.ok) {
+        throw new Error(payload?.error ?? `Move failed (${res.status})`);
+    }
+
+    return payload as {
+        message: string;
+        fromRosterSlotId: number;
+        toRosterSlotId: number;
+        swapped: boolean;
+        season: number;
+        week: number;
+    }
 }
 
 export async function addPlayerToRoster(opts: {
@@ -280,6 +318,23 @@ export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
     return (await res.json()) as { items: NflTeam[] };
 }
 
+export type Game = {
+    week: number;
+    season: number;
+    startTime: string | null;
+    homeTeam: { abbr: string };
+    awayTeam: { abbr: string };
+}
+
+export async function getSchedule(params: { week?: number | string }) {
+    const url = new URL(`${API_BASE_URL}/nfl/schedule`);
+    if (params.week !== undefined && params.week !== "") url.searchParams.set("week", String(params.week));
+
+    const res = await fetch(url.toString(), { credentials: "include" });
+    if (!res.ok) throw new Error(`GET /nfl/schedule failed: ${res.status} ${await res.text()}`);
+    return (await res.json()) as Game[];
+}
+
 // export async function getNflTeams(): Promise<NflTeam[]> {
 //     const res = await fetch(`${API_BASE_URL}/teams`, {
 //         credentials: "include",
@@ -305,21 +360,4 @@ export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
 //     console.warn("unexpected /teams payload:", data);
 //     return [];
 // }
-
-export type Game = {
-    week: number;
-    season: number;
-    startTime: string | null;
-    homeTeam: { abbr: string };
-    awayTeam: { abbr: string };
-}
-
-export async function getSchedule(params: { week?: number | string }) {
-    const url = new URL(`${API_BASE_URL}/nfl/schedule`);
-    if (params.week !== undefined && params.week !== "") url.searchParams.set("week", String(params.week));
-
-    const res = await fetch(url.toString(), { credentials: "include" });
-    if (!res.ok) throw new Error(`GET /nfl/schedule failed: ${res.status} ${await res.text()}`);
-    return (await res.json()) as Game[];
-}
     

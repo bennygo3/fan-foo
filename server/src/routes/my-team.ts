@@ -27,6 +27,20 @@ type RosterSlotWithPlayer = Prisma.RosterSlotGetPayload<{
     };
 }>;
 
+function isGameLocked(kickoffIso: string | null) {
+    if (!kickoffIso) return false;
+    const t = Date.parse(kickoffIso);
+    if (!Number.isFinite(t)) return false;
+    return t <= Date.now();
+}
+
+function canSlotAcceptPlayer(slotType: SlotType, playerPos: string) {
+    if (slotType === "BN") return true;
+    if (slotType === "IR") return false; // need to: link data from an external call for weekly injury status
+    if (slotType === "FLEX") return playerPos === "RB" || playerPos === "WR" || playerPos === "TE";
+    return slotType === (playerPos as SlotType)
+}
+
 myTeamRouter.get(
     "/:leagueId/teams/:teamId/roster",
     async (req: Request, res: Response, next: NextFunction) => {
@@ -96,7 +110,7 @@ myTeamRouter.get(
             });
 
             const matchupByTeamAbbr = new Map<
-                string, 
+                string,
                 { oppAbv: string; kickoffIso: string | null; isHome: boolean }
             >();
 
@@ -332,13 +346,13 @@ myTeamRouter.post(
                 toKickoff = kickoffByTeam.get(abbr) ?? null;
             }
 
-            if (isGameLocked(fromKickoff) ||isGameLocked(toKickoff)) {
+            if (isGameLocked(fromKickoff) || isGameLocked(toKickoff)) {
                 return res.status(409).json({ error: "Player is locked. Game has already started" });
             }
 
             const movingPos = fromSlot.player.position;
 
-            if (!slotCanAcceptPlayer(toSlot.slot, movingPos)) {
+            if (!canSlotAcceptPlayer(toSlot.slot, movingPos)) {
                 return res.status(409).json({
                     error: `Illegal move: ${movingPos} cannot go into ${toSlot.slot}`,
                 });
@@ -347,26 +361,34 @@ myTeamRouter.post(
             // if swapping, validate the opposite direction too
             if (toSlot.playerId && toSlot.player?.position) {
                 const otherPos = toSlot.player.position;
-                if (!slotCanAcceptPlayer(fromSlot.slot, otherPos)) {
+                if (!canSlotAcceptPlayer(fromSlot.slot, otherPos)) {
                     return res.status(409).json({
                         error: `Illegal swap: ${otherPos} cannot go into ${fromSlot.slot}`,
                     });
                 }
             }
 
-            const result = await prisma.$transaction(async (tx) => {
+            // swapping players in lineup
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 const fromPlayerId = fromSlot.playerId!;
                 const toPlayerId = toSlot.playerId ?? null;
 
                 await tx.rosterSlot.update({
                     where: { id: fromSlot.id },
-                    data: { playerId: toPlayerId },
+                    data: { playerId: null },
                 });
 
                 await tx.rosterSlot.update({
                     where: { id: toSlot.id },
                     data: { playerId: fromPlayerId },
                 });
+
+                if (toPlayerId) {
+                    await tx.rosterSlot.update({
+                        where: { id: fromSlot.id },
+                        data: { playerId: toPlayerId },
+                    });
+                }
 
                 return {
                     fromRosterSlotId: fromSlot.id,
@@ -382,6 +404,7 @@ myTeamRouter.post(
                 week,
             });
         } catch (err) {
+            console.error("[roster/move] error:", err);
             next(err);
         }
     }
