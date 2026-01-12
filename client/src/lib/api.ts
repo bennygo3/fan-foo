@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
 export type ManagedBy = {
     managerId: number | null;
@@ -60,6 +60,7 @@ export type RosterSlot = {
     } | null;
     oppAbv?: string | null;
     kickoffIso?: string | null;
+    isHome?: boolean | null;
     projPts?: number | null;
     livePts?: number | null;
 };
@@ -82,6 +83,7 @@ export type MyTeamApiResponse = {
     leagueId: number;
     team: TeamSummary;
     week: number;
+    season: number;
     roster: {
         starters: RosterSlot[];
         bench: RosterSlot[];
@@ -92,7 +94,7 @@ export type MyTeamApiResponse = {
 export async function getMyTeam(opts: {
     leagueId: number | string;
     teamId: number | string;
-    season?: string;
+    season?: number | string;
     week?: number | string;
 }) {
     const { leagueId, teamId, season, week } = opts;
@@ -187,7 +189,12 @@ export async function moveRosterSlot(opts: {
     });
 
     const text = await res.text();
-    const payload = text ? JSON.parse(text) : null;
+    let payload: any = null;
+    try {
+        payload = text ? JSON.parse(text) : null;
+    } catch {
+        // keep payload null; html/plaintext
+    }
 
     if (!res.ok) {
         throw new Error(payload?.error ?? `Move failed (${res.status})`);

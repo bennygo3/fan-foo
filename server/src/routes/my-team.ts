@@ -6,26 +6,19 @@ import { getCurrentSeasonWeek } from "./services/current-week";
 import { tankGetProjections, extractPlayerProjections, extractDSTProjections } from "./services/tank-call";
 import { scoreDST } from "../scoring/dst";
 
-export const myTeamRouter = express.Router();
+// normalizes/verifies bye weeks for each player. TS now sees byeWeeks: Record<string,number> | null
+function jsonToByeWeeks(
+    v: Prisma.JsonValue | null | undefined
+) : Record<string, number> | null {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return null;
 
-type RosterSlotWithPlayer = Prisma.RosterSlotGetPayload<{
-    include: {
-        player: {
-            include: {
-                team: {
-                    select: {
-                        id: true;
-                        abbr: true;
-                        name: true;
-                        byeWeeks: true;
-                        logoUrl: true;
-                        byeWeeksBySeason: true;
-                    };
-                };
-            };
-        };
-    };
-}>;
+    const out : Record<string, number> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        const n = typeof val === "number" ? val : Number(val);
+        if (Number.isFinite(n)) out[k] = n;
+    }
+    return out;
+}
 
 function isGameLocked(kickoffIso: string | null) {
     if (!kickoffIso) return false;
@@ -40,6 +33,40 @@ function canSlotAcceptPlayer(slotType: SlotType, playerPos: string) {
     if (slotType === "FLEX") return playerPos === "RB" || playerPos === "WR" || playerPos === "TE";
     return slotType === (playerPos as SlotType)
 }
+
+type DecoratedRosterSlot = {
+    id: number;
+    leagueId: number;
+    teamId: number;
+    playerId: number | null;
+    slot: SlotType;
+    createdAt: Date,
+
+    player: {
+        id: number;
+        name: string;
+        position: string;
+        externalId: string | null;
+        projPts: number | null;
+        headshotUrl: string | null;
+        team: {
+            id: number;
+            abbr: string;
+            name: string;
+            logoUrl: string | null;
+            byeWeeksBySeason: Record<string, number> | null;
+        } | null;
+    } | null;
+
+    oppAbv: string | null;
+    kickoffIso: string | null;
+    isHome: boolean | null;
+    projPts: number | null;
+    livePts: number | null;
+
+};
+
+export const myTeamRouter = express.Router();
 
 myTeamRouter.get(
     "/:leagueId/teams/:teamId/roster",
@@ -81,7 +108,7 @@ myTeamRouter.get(
             }
 
             // Load all roster slots for this team
-            const slots: RosterSlotWithPlayer[] = await prisma.rosterSlot.findMany({
+            const slots = await prisma.rosterSlot.findMany({
                 where: { leagueId, teamId },
                 include: {
                     player: {
@@ -170,14 +197,18 @@ myTeamRouter.get(
                 console.error("[roster] projection error:", err);
             }
 
-            const decorated = slots.map((slot) => {
+            const decorated: DecoratedRosterSlot[] = slots.map((slot) => {
                 const p = slot.player;
+
+                const teamByeWeeksBySeason = jsonToByeWeeks(p?.team?.byeWeeksBySeason);
+
                 const teamAbv = p?.team?.abbr ? p.team.abbr.toUpperCase() : null;
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
 
-                const byeWeeksBySeason = (p?.team?.byeWeeksBySeason ?? null) as Record<string, number> | null;
+                const byeWeekForSeason = teamByeWeeksBySeason ? teamByeWeeksBySeason[String(season)] : null;
 
-                const byeWeekForSeason = teamAbv && byeWeeksBySeason ? byeWeeksBySeason[String(season)] : null;
+                // const byeWeeksBySeason = (p?.team?.byeWeeksBySeason ?? null) as Record<string, number> | null;
+                // const byeWeekForSeason = teamAbv && byeWeeksBySeason ? byeWeeksBySeason[String(season)] : null;
 
                 const isBye = Number(byeWeekForSeason) === Number(week);
 
@@ -199,12 +230,38 @@ myTeamRouter.get(
                 }
 
                 return {
-                    ...slot,
+                    id: slot.id,
+                    leagueId: slot.leagueId,
+                    teamId: slot.teamId,
+                    playerId: slot.playerId ?? null,
+                    slot: slot.slot,
+                    createdAt: slot.createdAt,
+
+                    player: p 
+                        ? {
+                            id : p.id,
+                            name: p.name,
+                            position: p.position,
+                            externalId: p.externalId ?? null,
+                            projPts: p.projPts ?? null,
+                            headshotUrl: p.headshotUrl ?? null,
+                            team: p.team
+                                ? {
+                                    id : p.team.id,
+                                    abbr: p.team.abbr,
+                                    name: p.team.name,
+                                    logoUrl: p.team.logoUrl ?? null,
+                                    byeWeeksBySeason: teamByeWeeksBySeason,
+                                }
+                            : null,
+                        }
+                    : null,
+
                     oppAbv,
                     kickoffIso,
                     isHome: matchup?.isHome ?? null,
-                    projPts,
-                    livePts: null, // TODO: wire up live scoring
+                    projPts, 
+                    livePts: null,
                 };
             });
 

@@ -42,7 +42,8 @@ export default function MyTeamPage() {
     const [moving, setMoving] = useState(false);
 
     async function refreshLineup() {
-        const json = await getMyTeam({ leagueId, teamId });
+        if (!data) return;
+        const json = await getMyTeam({ leagueId, teamId, season: data.season, week: data.week,  });
         setData(json);
     }
 
@@ -141,6 +142,12 @@ export default function MyTeamPage() {
             return;
         }
 
+        if (!data) {
+            setMoveError("Roster not loaded yet");
+            setSelectedSlotId(null);
+            return;
+        }
+
         try {
             setMoving(true);
 
@@ -149,8 +156,8 @@ export default function MyTeamPage() {
                 teamId,
                 fromRosterSlotId: fromSlot.id,
                 toRosterSlotId: slot.id,
-                //season: (data as any)?.season,
-                //week: data?.week,
+                season: data.season,
+                week: data.week,
             });
 
             await refreshLineup();
@@ -283,12 +290,12 @@ function RosterTable({
                             TOTAL
                         </td>
                         <td className="myteam-td" style={{ fontWeight: 700 }}>
-                            {totalLive ? totalLive.toFixed(1) : "-"}
+                            {Number.isFinite(totalLive) ? totalLive.toFixed(1) : "-"}
                         </td>
                         <td className="myteam-td" />
                         <td className="myteam-td" />
                         <td className="myteam-td" style={{ fontWeight: 700 }}>
-                            {totalProj ? totalProj.toFixed(1) : "-"}
+                            {Number.isFinite(totalProj) ? totalProj.toFixed(1) : "-"}
                         </td>
                     </tr>
                 ) : null}
@@ -391,7 +398,3 @@ function RosterRow({
         </tr>
     );
 }
-
-
-
-
