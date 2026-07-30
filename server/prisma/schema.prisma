@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id        Int           @id @default(autoincrement())
-  email     String        @unique
-  username  String        @unique
-  isAdmin   Boolean       @default(false)
-  teams     FantasyTeam[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          Int                 @id @default(autoincrement())
+  email       String              @unique
+  username    String              @unique
+  isAdmin     Boolean             @default(false)
+  teams       FantasyTeam[]
+  teamSeasons FantasyTeamSeason[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 }
 
 model League {
@@ -22,6 +23,7 @@ model League {
   name      String          @unique
   settings  LeagueSettings?
   teams     FantasyTeam[]
+  seasons   LeagueSeason[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 }
@@ -56,16 +58,59 @@ model LeagueSettings {
   irSpots      Int @default(1)
 }
 
+model LeagueSeason {
+  id       Int @id @default(autoincrement())
+  leagueId Int
+  season   Int
+
+  league League @relation(fields: [leagueId], references: [id])
+
+  teams    FantasyTeamSeason[]
+  matchups FantasyMatchup[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leagueId, season])
+  @@index([season])
+}
+
+model FantasyTeamSeason {
+  id            Int  @id @default(autoincrement())
+  seasonId      Int
+  fantasyTeamId Int
+  managerId     Int?
+
+  // Allows a team name to change from year to year
+  name String
+
+  season      LeagueSeason @relation(fields: [seasonId], references: [id])
+  fantasyTeam FantasyTeam  @relation(fields: [fantasyTeamId], references: [id])
+  manager     User?        @relation(fields: [managerId], references: [id])
+
+  homeMatchups FantasyMatchup[] @relation("HomeFantasyTeamSeason")
+  awayMatchups FantasyMatchup[] @relation("AwayFantasyTeamSeason")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([seasonId, fantasyTeamId])
+  @@unique([seasonId, managerId])
+  @@index([managerId])
+  @@index([fantasyTeamId])
+}
+
 model FantasyTeam {
-  id        Int          @id @default(autoincrement())
+  id        Int                 @id @default(autoincrement())
   name      String
   leagueId  Int
-  league    League       @relation(fields: [leagueId], references: [id])
+  league    League              @relation(fields: [leagueId], references: [id])
   managerId Int?
-  manager   User?        @relation(fields: [managerId], references: [id])
+  manager   User?               @relation(fields: [managerId], references: [id])
   slots     RosterSlot[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  seasons   FantasyTeamSeason[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 
   @@unique([leagueId, name]) // unique team name for each league
   @@unique([leagueId, managerId]) // Managers can only have one team
@@ -73,16 +118,32 @@ model FantasyTeam {
   @@index([leagueId, managerId])
 }
 
-enum SlotType {
-  QB
-  RB
-  WR
-  TE
-  FLEX
-  DST
-  K
-  BN
-  IR
+model FantasyMatchup {
+  id       Int @id @default(autoincrement())
+  seasonId Int
+  week     Int
+
+  homeTeamSeasonId Int
+  awayTeamSeasonId Int
+
+  homeScore Decimal? @db.Decimal(10, 2)
+  awayScore Decimal? @db.Decimal(10, 2)
+
+  type   FantasyMatchupType   @default(REGULAR_SEASON)
+  status FantasyMatchupStatus @default(SCHEDULED)
+
+  season LeagueSeason @relation(fields: [seasonId], references: [id])
+
+  homeTeamSeason FantasyTeamSeason @relation("HomeFantasyTeamSeason", fields: [homeTeamSeasonId], references: [id])
+  awayTeamSeason FantasyTeamSeason @relation("AwayFantasyTeamSeason", fields: [awayTeamSeasonId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // uniques = a fantasy team cannot appear as home team/away team in two different matchups during the same week
+  @@unique([seasonId, week, homeTeamSeasonId])
+  @@unique([seasonId, week, awayTeamSeasonId])
+  @@index([seasonId, week])
 }
 
 model RosterSlot {
@@ -91,7 +152,7 @@ model RosterSlot {
   teamId    Int
   team      FantasyTeam @relation(fields: [teamId], references: [id])
   playerId  Int?
-  player    Player?      @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
+  player    Player?     @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
   slot      SlotType
   createdAt DateTime    @default(now())
 
@@ -105,32 +166,32 @@ model RosterSlot {
 }
 
 model Team {
-  id      Int      @id @default(autoincrement())
-  abbr    String   @unique
-  name    String
-  players Player[]
-  logoUrl String? 
+  id               Int      @id @default(autoincrement())
+  abbr             String   @unique
+  name             String
+  players          Player[]
+  logoUrl          String?
   byeWeeksBySeason Json?
-  homeGames Game[] @relation("homeTeam")
-  awayGames Game[] @relation("awayTeam")
+  homeGames        Game[]   @relation("homeTeam")
+  awayGames        Game[]   @relation("awayTeam")
 }
 
 model Player {
-  id            Int          @id @default(autoincrement())
-  name          String
-  position      String
-  teamId        Int?
-  team          Team?        @relation(fields: [teamId], references: [id])
-  headshotUrl   String?
-  externalId    String?      @unique
-  externalSrc   String?
-  projPts       Float?
-  adp           Float?
-  lastSyncedAt  DateTime?
-  RosterSlot    RosterSlot[]
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           Int          @id @default(autoincrement())
+  name         String
+  position     String
+  teamId       Int?
+  team         Team?        @relation(fields: [teamId], references: [id])
+  headshotUrl  String?
+  externalId   String?      @unique
+  externalSrc  String?
+  projPts      Float?
+  adp          Float?
+  lastSyncedAt DateTime?
+  RosterSlot   RosterSlot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([externalSrc, externalId])
   @@index([name])
@@ -139,13 +200,13 @@ model Player {
 }
 
 model Game {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   season    Int
   week      Int
   startTime DateTime? //optional for null
   venue     String?
-  status    String   @default("scheduled")
-  isFlexed  Boolean  @default(false)
+  status    String    @default("scheduled")
+  isFlexed  Boolean   @default(false)
 
   // External mapping for Tank/ESPN/etc.
   externalGameId String? @unique
@@ -160,6 +221,31 @@ model Game {
   // Prevent dupes when re-seeding
   @@unique([season, week, homeTeamId, awayTeamId, startTime])
   @@index([season, week])
+}
+
+enum SlotType {
+  QB
+  RB
+  WR
+  TE
+  FLEX
+  DST
+  K
+  BN
+  IR
+}
+
+enum FantasyMatchupType {
+  REGULAR_SEASON
+  PLAYOFF
+  CONSOLATION
+  CHAMPIONSHIP
+}
+
+enum FantasyMatchupStatus {
+  SCHEDULED
+  IN_PROGRESS
+  FINAL
 }
 
 // docs: https://pris.ly/d/prisma-schema
