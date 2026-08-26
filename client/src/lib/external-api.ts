@@ -1,5 +1,5 @@
 // this is not being used to preserve external calls...
-// - but is fully functional and avaialble
+// - but is/was fully functional and avaialble
 
 // export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 

@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import schedule2025 from "./nfl-schedule-2025.json" assert { type: "json" };
+import schedule2025 from "./nfl-schedule-2025.json" with { type: "json" };
 
 const prisma = new PrismaClient();
 
@@ -13,20 +13,20 @@ type GameSeed = {
     startTime: string | null;
 }
 
-    const TEAM_MANAGERS = [
-        { teamName: "Rippin' Darts", email: "jKarg@example.com", username: "JKarg"},
-        { teamName: "Lovullo For Prez", email: "sheaNo@example.com", username: "SheaNo" },
-        { teamName: "The Dude Abides", email: "milesMc@example.com", username: "MilesMc" },
-        { teamName: "Snortin' Addis-on", email: "KevG@example.com", username: "KevG" },
-        { teamName: "OMARION COMIN' YO!", email: "AndyMc@example.com", username: "AndyMc" },
-        { teamName: "Lou Holtz", email: "BenG@example.com", username: "BenG" },
-        { teamName: "BIG TRUZZ", email: "SpenceMc@example.com", username: "SpenceMc" },
-        { teamName: "Achane Reaction", email: "AlSpi@example.com", username: "AlSpi" },
-        { teamName: "THE CHAMP", email: "MattH@example.com", username: "MattH" },
-        { teamName: "Skatt-Cat-ebo", email: "kNo@example.com", username: "KNo" },
-        { teamName: "The Grave Digger", email: "bScho@example.com", username: "BScho" },
-        { teamName: "Ricky's Rolex no TikTok", email: "cLew@example.com", username: "CLew" },
-    ];
+const TEAM_MANAGERS = [
+    { teamName: "Rippin' Darts", email: "jKarg@example.com", username: "JKarg" },
+    { teamName: "Lovullo For Prez", email: "sheaNo@example.com", username: "SheaNo" },
+    { teamName: "The Dude Abides", email: "milesMc@example.com", username: "MilesMc" },
+    { teamName: "Snortin' Addis-on", email: "KevG@example.com", username: "KevG" },
+    { teamName: "OMARION COMIN' YO!", email: "AndyMc@example.com", username: "AndyMc" },
+    { teamName: "Lou Holtz", email: "BenG@example.com", username: "BenG" },
+    { teamName: "BIG TRUZZ", email: "SpenceMc@example.com", username: "SpenceMc" },
+    { teamName: "Achane Reaction", email: "AlSpi@example.com", username: "AlSpi" },
+    { teamName: "THE CHAMP", email: "MattH@example.com", username: "MattH" },
+    { teamName: "Skatt-Cat-ebo", email: "kNo@example.com", username: "KNo" },
+    { teamName: "The Grave Digger", email: "bScho@example.com", username: "BScho" },
+    { teamName: "Ricky's Rolex no TikTok", email: "cLew@example.com", username: "CLew" },
+];
 
 async function seedLeague() {
     const LEAGUE_NAME = "Forever Unclean";
@@ -68,7 +68,7 @@ async function seedLeague() {
 
     for (const mgr of TEAM_MANAGERS) {
         const u = usersByTeamName.get(mgr.teamName);
-        if(!u) {
+        if (!u) {
             throw new Error(`No user found for team ${mgr.teamName}`);
         }
 
@@ -110,7 +110,7 @@ async function seedTeamsAndGames() {
 
     // Upsert Teams by abbr
     const teams = await prisma.$transaction(
-        abbrs.map((abbr) => 
+        abbrs.map((abbr) =>
             prisma.team.upsert({
                 where: { abbr },
                 update: {},
@@ -163,7 +163,7 @@ async function seedTeamsAndGames() {
 
         gameRows.push(base);
     }
-    
+
     // Insert all of the games
     await prisma.game.createMany({
         data: gameRows,

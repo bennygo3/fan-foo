@@ -186,7 +186,7 @@ myTeamRouter.get(
                         safeties: Number(d?.safeties ?? 0),
                         defTD: Number(d?.defTD ?? 0),
                         returnTD: Number(d?.returnTD ?? 0),
-                        blockKick: Number(d?.blockKIck ?? 0),
+                        blockKick: Number(d?.blockKick ?? 0),
                         ptsAgainst: Number(d?.ptsAgainst ?? 99),
                         yardsAgainst: Number(d?.yardsAgainst ?? 0),
                     });
