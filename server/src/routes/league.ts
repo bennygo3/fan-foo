@@ -4,6 +4,20 @@ import { prisma } from "../lib/prisma";
 
 export const leagueRouter = express.Router();
 
+function parsePositiveInteger(value: unknown): number | null {
+    if (typeof value !== "string") return null;
+
+    const parsed = Number(value);
+
+    if (!Number.isInteger(parsed) || parsed < 1) {
+        return null;
+    }
+
+    return parsed;
+}
+
+
+
 // Get /leagues; Returns all leagues
 leagueRouter.get("/", async (_req: Request, res: Response, next: NextFunction) => {
     try {
