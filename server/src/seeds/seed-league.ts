@@ -30,6 +30,7 @@ const TEAM_MANAGERS = [
 
 async function seedLeague() {
     const LEAGUE_NAME = "Forever Unclean";
+    const FANTASY_SEASON = 2026;
 
     console.log("🌱 Seeding league, settings, teams...");
 
@@ -47,55 +48,89 @@ async function seedLeague() {
         create: { leagueId: league.id },
     });
 
-    const usersByTeamName = new Map<string, { id: number; email: string; username: string }>();
+    const userIdByTeamName = new Map<string, number>();
+    const fantasyTeamIdByName = new Map<string, number>();
+    // const usersByTeamName = new Map<string, { id: number; email: string; username: string }>();
 
     for (const mgr of TEAM_MANAGERS) {
+        const isCommissioner = mgr.username === "BScho";
+
         const user = await prisma.user.upsert({
             where: { email: mgr.email },
-            update: { username: mgr.username },
+            update: { username: mgr.username, isAdmin: isCommissioner, },
             create: {
                 email: mgr.email,
                 username: mgr.username,
+                isAdmin: isCommissioner,
             },
         });
 
-        usersByTeamName.set(mgr.teamName, {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-        });
-    }
-
-    for (const mgr of TEAM_MANAGERS) {
-        const u = usersByTeamName.get(mgr.teamName);
-        if (!u) {
-            throw new Error(`No user found for team ${mgr.teamName}`);
-        }
-
-        await prisma.fantasyTeam.upsert({
+        const fantasyTeam = await prisma.fantasyTeam.upsert({
             where: {
                 leagueId_name: {
                     leagueId: league.id,
                     name: mgr.teamName,
                 },
             },
-            update: {
-                managerId: u.id,
-            },
+            update: {},
             create: {
                 name: mgr.teamName,
                 leagueId: league.id,
-                managerId: u.id,
+            },
+        });
+
+        userIdByTeamName.set(mgr.teamName, user.id);
+        fantasyTeamIdByName.set(mgr.teamName, fantasyTeam.id);
+    }
+
+    const leagueSeason = await prisma.leagueSeason.upsert({
+        where: {
+            leagueId_season: {
+                leagueId: league.id,
+                season: FANTASY_SEASON,
+            },
+        },
+        update: {},
+        create: {
+            leagueId: league.id,
+            season: FANTASY_SEASON,
+        },
+    });
+
+    for (const mgr of TEAM_MANAGERS) {
+        const managerId = userIdByTeamName.get(mgr.teamName);
+        const fantasyTeamId = fantasyTeamIdByName.get(mgr.teamName);
+
+        if (!managerId || !fantasyTeamId) {
+            throw new Error(`No user found for team ${mgr.teamName}`);
+        }
+
+        await prisma.fantasyTeamSeason.upsert({
+            where: {
+                seasonId_fantasyTeamId: {
+                    seasonId: leagueSeason.id,
+                    fantasyTeamId,
+                },
+            },
+            update: {
+                managerId,
+                name: mgr.teamName,
+            },
+            create: {
+                seasonId: leagueSeason.id,
+                fantasyTeamId,
+                managerId,
+                name: mgr.teamName,
             },
         });
     }
 
     console.log(`✅ Seeded: 
         - League: ${league.name} (id=${league.id})
+        - Fantasy season: ${leagueSeason.season} (id=${leagueSeason.id})
         - Teams: ${TEAM_MANAGERS.length})
         - Managers: ${TEAM_MANAGERS.map((t) => t.username).join(", ")}
         - Commissioner: "The Grave Digger" (BScho)
-
     `);
 }
 

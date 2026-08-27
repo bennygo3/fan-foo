@@ -75,18 +75,18 @@ model LeagueSeason {
 }
 
 model FantasyTeam {
-  id        Int                 @id @default(autoincrement())
-  name      String
-  leagueId  Int
-  league    League              @relation(fields: [leagueId], references: [id])
+  id       Int    @id @default(autoincrement())
+  name     String
+  leagueId Int
+  league   League @relation(fields: [leagueId], references: [id])
 
-  seasons   FantasyTeamSeason[]
+  seasons FantasyTeamSeason[]
 
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([leagueId, name]) // unique team name for each league
-  @@index([leagueId]) 
+  @@index([leagueId])
 }
 
 model FantasyTeamSeason {
@@ -112,7 +112,6 @@ model FantasyTeamSeason {
   @@unique([seasonId, fantasyTeamId]) // a permanent fantasy team can appear only once in a league season.
   @@unique([seasonId, managerId]) //a manager can manage only one team in a league season.
   @@unique([id, seasonId]) // supports RosterSlot's compound seasonal-team relationship.
-  
   @@index([managerId])
   @@index([fantasyTeamId])
 }
@@ -131,19 +130,9 @@ model FantasyMatchup {
   type   FantasyMatchupType   @default(REGULAR_SEASON)
   status FantasyMatchupStatus @default(SCHEDULED)
 
-  season LeagueSeason @relation(fields: [seasonId], references: [id])
-
-  homeTeamSeason FantasyTeamSeason @relation(
-    "HomeFantasyTeamSeason", 
-    fields: [homeTeamSeasonId], 
-    references: [id]
-  )
-  
-  awayTeamSeason FantasyTeamSeason @relation(
-    "AwayFantasyTeamSeason", 
-    fields: [awayTeamSeasonId], 
-    references: [id]
-  )
+  season         LeagueSeason      @relation(fields: [seasonId], references: [id])
+  homeTeamSeason FantasyTeamSeason @relation("HomeFantasyTeamSeason", fields: [homeTeamSeasonId], references: [id])
+  awayTeamSeason FantasyTeamSeason @relation("AwayFantasyTeamSeason", fields: [awayTeamSeasonId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,26 +144,20 @@ model FantasyMatchup {
 }
 
 model RosterSlot {
-  id Int  @id @default(autoincrement())
-  
-  leagueSeasonId  Int
-  fantasyTeamSeasonId Int
-  fantasyTeamSeason FantasyTeamSeason @relation(
-    "FantasyTeamSeasonRosterSlots",
-    fields: [fantasyTeamSeasonId, leagueSeasonId],
-    references: [id, seasonId],
-    onDelete: Cascade
-  )
+  id Int @id @default(autoincrement())
 
-  playerId  Int?
-  player    Player? @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
-  slot      SlotType
-  
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  leagueSeasonId      Int
+  fantasyTeamSeasonId Int
+  fantasyTeamSeason   FantasyTeamSeason @relation("FantasyTeamSeasonRosterSlots", fields: [fantasyTeamSeasonId, leagueSeasonId], references: [id, seasonId], onDelete: Cascade)
+
+  playerId Int?
+  player   Player?  @relation(fields: [playerId], references: [id]) // Player = existing model for NFL player 
+  slot     SlotType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([leagueSeasonId, playerId]) // prevents same player on two different teams in the same league
-
   // common queries
   @@index([fantasyTeamSeasonId, slot])
   @@index([leagueSeasonId, slot])
