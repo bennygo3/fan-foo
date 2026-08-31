@@ -6,7 +6,6 @@
         "strict": true,
         "skipLibCheck": true,
         "types": ["node"],
-        "baseUrl": ".",
         "paths": { },
         "rootDir": "src",
         "outDir": "dist",

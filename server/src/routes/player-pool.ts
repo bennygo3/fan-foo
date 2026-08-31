@@ -5,7 +5,7 @@ import type { Prisma, SlotType } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { getCurrentSeasonWeek } from "./services/current-week";
 import { tankGetProjections, extractPlayerProjections, extractDSTProjections } from "./services/tank-call";
-import { scoreDST } from "src/scoring/dst";
+import { scoreDST } from "../scoring/dst";
 
 export const playerPoolRouter = express.Router();
 

@@ -1,6 +1,6 @@
-import { prisma } from "src/lib/prisma";
-import { tankGetTeamsWithRosters } from "src/routes/services/tank-call";
-import { normalizeByeWeeksBySeason } from "src/lib/byeWeeks";
+import { prisma } from "../lib/prisma";
+import { tankGetTeamsWithRosters } from "../routes/services/tank-call";
+import { normalizeByeWeeksBySeason } from "../lib/byeWeeks";
 import { Prisma } from "@prisma/client";
 
 async function main() {
