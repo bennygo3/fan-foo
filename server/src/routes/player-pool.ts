@@ -9,13 +9,55 @@ import { scoreDST } from "../scoring/dst";
 
 export const playerPoolRouter = express.Router();
 
+function parsePositiveInteger(value: unknown): number | null {
+    if (
+        typeof value !== "string" &&
+        typeof value !== "number"
+    ) {
+        return null;
+    }
+
+    const parsed = Number(value);
+
+    if (!Number.isInteger(parsed) || parsed < 1) {
+        return null;
+    }
+
+    return parsed;
+}
+
+function hasPrismaCode(error: unknown, code: string): boolean {
+    if (typeof error !== "object" || error === null) {
+        return false;
+    }
+
+    return (error as { code?: unknown }).code === code;
+}
+
+async function findLeagueSeason(
+    leagueId: number,
+    season: number
+) {
+    return prisma.leagueSeason.findUnique({
+        where: {
+            leagueId_season: {
+                leagueId,
+                season,
+            },
+        },
+    });
+}
+
 playerPoolRouter.get(
     "/:leagueId/player-pool",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const leagueId = Number(req.params.leagueId);
-            if (!Number.isFinite(leagueId)) {
-                return res.status(400).json({ error: "Invalid leagueId" });
+            const leagueId = parsePositiveInteger(
+                req.params.leagueId
+            );
+
+            if (leagueId === null) {
+                return res.status(400).json({ error: "Invalid leagueId", });
             }
 
             // filters
@@ -23,38 +65,92 @@ playerPoolRouter.get(
             const position = typeof req.query.position === "string" ? req.query.position.trim().toUpperCase() : undefined;
             const teamAbv = typeof req.query.teamAbv === "string" ? req.query.teamAbv.trim().toUpperCase() : undefined;
 
-            const seasonParam = typeof req.query.season === "string" ? req.query.season : undefined;
-            const weekParamRaw = typeof req.query.week === "string" ? req.query.week : undefined;
+            const requestedSeason = req.query.season === undefined ? undefined : parsePositiveInteger(req.query.season);
+            const requestedWeek = req.query.week === undefined ? undefined : parsePositiveInteger(req.query.week);
+
+            if (requestedSeason === null) {
+                return res.status(400).json({
+                    error: "Invalid season",
+                });
+            }
+
+            if (requestedWeek === null) {
+                return res.status(400).json({
+                    error: "Invalid week",
+                });
+            }
 
             let season: number;
             let week: number;
 
-            if (seasonParam && weekParamRaw) {
-                season = Number(seasonParam);
-                week = Number(weekParamRaw);
-            } else {
+            if (
+                requestedSeason === undefined ||
+                requestedWeek === undefined
+            ) {
                 const current = await getCurrentSeasonWeek();
-                season = current.season;
-                week = current.week;
+
+                season = requestedSeason ?? current.season;
+                week = requestedWeek ?? current.week;
+            } else {
+                season = requestedSeason;
+                week = requestedWeek;
             }
 
-            const page = Math.max(1, typeof req.query.page === "string" ? Number(req.query.page) : 1);
-            const limit = Math.min(100, Math.max(1, typeof req.query.limit === "string" ? Number(req.query.limit) : 100));
+            const leagueSeason = await findLeagueSeason(
+                leagueId,
+                season
+            );
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `League's season ${season} not found`,
+                });
+            }
+
+            const requestedPage =
+                req.query.page === undefined
+                    ? 1
+                    : parsePositiveInteger(req.query.page)
+                ;
+
+            const requestedLimit =
+                req.query.limit === undefined
+                    ? 100
+                    : parsePositiveInteger(req.query.limit)
+                ;
+
+            if (requestedPage === null) {
+                return res.status(400).json({
+                    error: "Invalid page",
+                });
+            }
+
+            if (requestedLimit === null) {
+                return res.status(400).json({
+                    error: "Invalid limit",
+                });
+            }
+
+            const page = requestedPage;
+            const limit = Math.min(100, requestedLimit);
 
             const sortRaw = typeof req.query.sort === "string" ? req.query.sort : "name";
             const orderParam = typeof req.query.order === "string" ? req.query.order.toLowerCase() : undefined;
 
             const dir: "asc" | "desc" =
-            sortRaw === "proj" || sortRaw === "projPts"
-            ?
-            orderParam === "asc" ? "asc" : "desc"
-            : orderParam === "desc" ? "desc" : "asc";
+                sortRaw === "proj" || sortRaw === "projPts"
+                    ? orderParam === "asc" ? "asc" : "desc"
+                    : orderParam === "desc" ? "desc" : "asc"
+                ;
 
             const and: Prisma.PlayerWhereInput[] = [];
 
             if (search) {
                 and.push({
-                    name: { contains: search, mode: "insensitive" },
+                    name: {
+                        contains: search,
+                        mode: "insensitive",
+                    },
                 });
             }
 
@@ -65,39 +161,58 @@ playerPoolRouter.get(
             if (teamAbv) {
                 and.push({
                     team: {
-                        abbr: { equals: teamAbv, mode: "insensitive" },
+                        abbr: {
+                            equals: teamAbv,
+                            mode: "insensitive",
+                        },
                     },
                 });
             }
 
-            const where: Prisma.PlayerWhereInput = and.length ? { AND: and } : {};
+            const where: Prisma.PlayerWhereInput =
+                and.length > 0
+                    ? { AND: and }
+                    : {}
+                ;
 
-            type PlayerWithAtts = Prisma.PlayerGetPayload<{
-                include: {
-                    team: true;
-                    RosterSlot: {
-                        include: {
-                            team: {
-                                include: { manager: true };
-                            };
-                        };
-                    };
-                };
-            }>;
+            // type PlayerWithAtts = Prisma.PlayerGetPayload<{
+            //     include: {
+            //         team: true;
+            //         RosterSlot: {
+            //             include: {
+            //                 team: {
+            //                     include: { manager: true };
+            //                 };
+            //             };
+            //         };
+            //     };
+            // }>;
 
-            const players: PlayerWithAtts[] = await prisma.player.findMany({
+            const players = await prisma.player.findMany({
                 where,
                 include: {
                     team: true,
                     RosterSlot: {
-                        where: { leagueId },
-                        include: {
-                            team: {
-                                include: {
-                                    manager: true,
+                        where: {
+                            leagueSeasonId: leagueSeason.id,
+                        },
+                        select: {
+                            id: true,
+                            fantasyTeamSeason: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    managerId: true,
+                                    manager: {
+                                        select: {
+                                            id: true,
+                                            username: true,
+                                        },
+                                    },
                                 },
                             },
                         },
+
                     },
                 },
             });
@@ -116,19 +231,27 @@ playerPoolRouter.get(
 
             const matchupByTeamAbbr = new Map<
                 string,
-                { oppAbv: string; kickoffIso: string | null }
+                {
+                    oppAbv: string;
+                    kickoffIso: string | null;
+                }
             >();
 
-            for (const g of games) {
-                const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+            for (const game of games) {
+                const kickoffIso = game.startTime
+                    ? game.startTime.toISOString()
+                    : null;
 
-                matchupByTeamAbbr.set(g.homeTeam.abbr, {
-                    oppAbv: g.awayTeam.abbr,
+                const homeAbbr = game.homeTeam.abbr.toUpperCase();
+                const awayAbbr = game.awayTeam.abbr.toUpperCase();
+
+                matchupByTeamAbbr.set(homeAbbr, {
+                    oppAbv: awayAbbr,
                     kickoffIso,
                 });
 
-                matchupByTeamAbbr.set(g.awayTeam.abbr, {
-                    oppAbv: g.homeTeam.abbr,
+                matchupByTeamAbbr.set(awayAbbr, {
+                    oppAbv: homeAbbr,
                     kickoffIso,
                 });
             }
@@ -138,95 +261,100 @@ playerPoolRouter.get(
             const dstProjMap = new Map<string, { projPts: number }>();
 
             try {
-                const projResp = await tankGetProjections({ week: String(week), season: String(season) });
-                const rows = extractPlayerProjections(projResp);
-                for (const r of rows) {
-                    const id = String(r?.playerID ?? r?.espnID ?? "");
-                    if (!id) continue;
-                    const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
-                    projMap.set(id, { projPts: Number.isFinite(projPts) ? projPts : 0 });
+                const projResp = await tankGetProjections({ week: String(week), season: String(season), });
+                const playerRows = extractPlayerProjections(projResp);
+                for (const row of playerRows) {
+                    const externalId = String(row?.playerID ?? row?.espnID ?? "");
+                    if (!externalId) continue;
+                    const projPts = Number(row?.fantasyPoints ?? row?.points ?? 0);
+                    projMap.set(externalId, { projPts: Number.isFinite(projPts) ? projPts : 0 });
                 }
 
                 const dstRows = extractDSTProjections(projResp);
-                for (const d of dstRows) {
-                    const teamAbv = String(d?.teamAbv ?? d?.team ?? "").toUpperCase();
+                for (const dRow of dstRows) {
+                    const teamAbv = String(dRow?.teamAbv ?? dRow?.team ?? "").toUpperCase();
                     if (!teamAbv) continue;
 
                     const scored = scoreDST({
-                        teamAbv,
-                        sacks: Number(d?.sacks ?? 0),
-                        interceptions: Number(d?.interceptions ?? 0),
-                        fumbleRecoveries: Number(d?.fumbleRecoveries ?? 0),
-                        safeties: Number(d?.safeties ?? 0),
-                        defTD: Number(d?.defTD ?? 0),
-                        returnTD: Number(d?.returnTD ?? 0),
-                        blockKick: Number(d?.blockKick ?? 0),
-                        ptsAgainst: Number(d?.ptsAgainst ?? 99),
-                        yardsAgainst: Number(d?.yardsAgainst ?? 0),
+                        teamAbv: teamAbv,
+                        sacks: Number(dRow?.sacks ?? 0),
+                        interceptions: Number(dRow?.interceptions ?? 0),
+                        fumbleRecoveries: Number(dRow?.fumbleRecoveries ?? 0),
+                        safeties: Number(dRow?.safeties ?? 0),
+                        defTD: Number(dRow?.defTD ?? 0),
+                        returnTD: Number(dRow?.returnTD ?? 0),
+                        blockKick: Number(dRow?.blockKick ?? 0),
+                        ptsAgainst: Number(dRow?.ptsAgainst ?? 99),
+                        yardsAgainst: Number(dRow?.yardsAgainst ?? 0),
                     });
 
                     dstProjMap.set(teamAbv, { projPts: scored });
                 }
-                console.log("[player-pool] projMap size:", projMap.size)
             } catch (err) {
                 console.error("Failed to load projections:", err);
             }
 
 
-            const items = players.map((p, idx) => {
-                const slot = p.RosterSlot[0];
-                const unavailable = !!slot;
+            const items = players.map((player) => {
 
-                const teamAbv = p.team?.abbr ?? null;
-                const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
-                // const proj = p.externalId ? projMap.get(p.externalId) : undefined;
+                const rosterSlot = player.RosterSlot[0] ?? null;
+                const fantasyTeamSeason = rosterSlot?.fantasyTeamSeason ?? null;
+                const unavailable = rosterSlot !== null;
+
+                const nflTeamAbv = player.team?.abbr.toUpperCase() ?? null;
+                const matchup = nflTeamAbv ? matchupByTeamAbbr.get(nflTeamAbv) : undefined;
+
                 let projPts: number | null = null;
 
-                if (p.position === "DST" || p.position === "D/ST") {
-                    const dstProj = teamAbv ? dstProjMap.get(teamAbv.toUpperCase()) : undefined;
-                    projPts = dstProj?.projPts ?? p.projPts ?? null;
+                const playerPosition = player.position.toUpperCase();
 
-                    if (idx < 5) {
-                        console.log("[D/ST debug]", {
-                            dbId: p.id,
-                            teamAbv,
-                            hasDstProj: teamAbv ? dstProjMap.has(teamAbv.toUpperCase()) : false,
-                            dstProj,
-                        });
-                    }
+                if (playerPosition === "DST" || playerPosition === "D/ST" || playerPosition === "DEF") {
+                    const dstProj = nflTeamAbv ? dstProjMap.get(nflTeamAbv) : undefined;
+
+                    projPts = dstProj?.projPts ?? player.projPts ?? null;
+
+                    // if (idx < 5) {
+                    //     console.log("[D/ST debug]", {
+                    //         dbId: p.id,
+                    //         teamAbv,
+                    //         hasDstProj: teamAbv ? dstProjMap.has(teamAbv.toUpperCase()) : false,
+                    //         dstProj,
+                    //     });
+                    // }
                 } else {
                     // Offensive player 🏈 projections come from playerProjections
-                    const proj = p.externalId ? projMap.get(p.externalId) : undefined;
-                    projPts = proj?.projPts ?? p.projPts ?? null;
+                    const playerProj = player.externalId ? projMap.get(player.externalId) : undefined;
 
-                    if (idx < 5) {
-                        console.log("[player-pool] join debug", {
-                            dbId: p.id,
-                            name: p.name,
-                            externalId: p.externalId,
-                            hasProj: p.externalId ? projMap.has(p.externalId) : false,
-                            proj,
-                        });
-                    }
+                    projPts = playerProj?.projPts ?? player.projPts ?? null;
+
+                    // if (idx < 5) {
+                    //     console.log("[player-pool] join debug", {
+                    //         dbId: p.id,
+                    //         name: p.name,
+                    //         externalId: p.externalId,
+                    //         hasProj: p.externalId ? projMap.has(p.externalId) : false,
+                    //         proj,
+                    //     });
+                    // }
                 }
 
                 return {
-                    id: p.id,
-                    name: p.name,
-                    position: p.position,
-                    teamAbv,
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    teamAbv: nflTeamAbv,
                     projPts,
                     oppAbv: matchup?.oppAbv ?? null,
                     kickoffIso: matchup?.kickoffIso ?? null,
-                    headshot: p.headshotUrl ?? null,
+                    headshot: player.headshotUrl ?? null,
                     available: !unavailable,
-                    managedBy: unavailable && slot?.team ?
+                    managedBy: unavailable && fantasyTeamSeason ?
                         {
-                            managerId: slot.team.managerId ?? null,
-                            managerTeamName: slot.team.name,
-                            managerName: slot.team.manager?.username ?? null,
+                            managerId: fantasyTeamSeason.managerId ?? null,
+                            managerTeamName: fantasyTeamSeason.name,
+                            managerName: fantasyTeamSeason.manager?.username ?? null,
                         }
-                    : null,
+                        : null,
                 };
             });
 
@@ -265,7 +393,7 @@ playerPoolRouter.get(
             const start = (page - 1) * limit;
             const paged = sorted.slice(start, start + limit);
 
-            res.json({ items: paged, total, page, limit, season, week });
+            res.json({ items: paged, total, page, limit, leagueSeasonId: leagueSeason.id, season, week });
         } catch (err) {
             next(err);
         }
@@ -300,20 +428,55 @@ playerPoolRouter.post(
     "/:leagueId/teams/:teamId/roster/add",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const leagueId = Number(req.params.leagueId);
-            const teamId = Number(req.params.teamId);
-            const playerId = Number(req.body.playerId);
-            const requestedSlot = req.body.slot as SlotType | undefined;
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+            const fantasyTeamId = parsePositiveInteger(req.params.teamId);
+            const playerId = parsePositiveInteger(req.body?.playerId);
+            const season = parsePositiveInteger(req.body?.season);
+            const requestedSlot =
+                typeof req.body?.slot === "string"
+                    ? (req.body.slot.toUpperCase() as SlotType)
+                    : undefined;
 
-            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId) || !Number.isFinite(playerId)) {
+            if (
+                leagueId === null ||
+                fantasyTeamId === null ||
+                playerId === null
+            ) {
                 return res.status(400).json({ error: "Invalid leagueId, teamId, or playerId" });
             }
 
+            if (season === null) {
+                return res.status(400).json({
+                    error: "A valid season is required",
+                });
+            }
+
+            const leagueSeason =
+                await findLeagueSeason(
+                    leagueId,
+                    season
+                )
+                ;
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `League season ${season} not found`,
+                });
+            }
+
             // check for valid league and team
-            const team = await prisma.fantasyTeam.findFirst({
-                where: { id: teamId, leagueId },
+            const fantasyTeamSeason = await prisma.fantasyTeamSeason.findFirst({
+                where: { seasonId: leagueSeason.id, fantasyTeamId, },
+                include: {
+                    fantasyTeam: {
+                        select: {
+                            leagueId: true,
+                        },
+                    },
+                },
             });
-            if (!team) {
+
+            if (!fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId !== leagueId) {
                 return res.status(404).json({ error: "Team not found in this league" });
             }
 
@@ -327,13 +490,13 @@ playerPoolRouter.post(
 
             // make sure player isn't on another manager's team
             const alreadyOnRoster = await prisma.rosterSlot.findFirst({
-                where: { leagueId, playerId },
+                where: { leagueSeasonId: leagueSeason.id, playerId },
             });
             if (alreadyOnRoster) {
-                return res.status(400).json({
+                return res.status(409).json({
                     error: "Player already rostered.",
                     rosterSlotId: alreadyOnRoster.id,
-                    teamId: alreadyOnRoster.teamId,
+                    fantasyTeamSeasonId: alreadyOnRoster.fantasyTeamSeasonId,
                 });
             }
 
@@ -352,54 +515,88 @@ playerPoolRouter.post(
                 candidateSlots = allowedSlotsForPosition(player.position);
             }
 
-            console.log("[roster/add] adding player", {
-                playerId: player.id,
-                name: player.name,
-                position: player.position,
-                requestedSlot,
-                candidateSlots,
-            });
-
-            let emptySlot = null;
+            let emptySlotId: number | null = null;
 
             for (const slotType of candidateSlots) {
-                emptySlot = await prisma.rosterSlot.findFirst({
+                const emptySlot = await prisma.rosterSlot.findFirst({
                     where: {
-                        leagueId,
-                        teamId,
+                        leagueSeasonId: leagueSeason.id,
+                        fantasyTeamSeasonId: fantasyTeamSeason.id,
                         playerId: null,
                         slot: slotType,
+                    },
+                    select: {
+                        id: true,
                     },
                     orderBy: { id: "asc" },
                 });
 
-                if (emptySlot) break;
+                if (emptySlot) {
+                    emptySlotId = emptySlot.id;
+                    break;
+                } 
             }
 
-            if (!emptySlot) {
+            if (emptySlotId === null) {
                 return res.status(400).json({
                     error: "Must drop a player",
                     triedSlots: candidateSlots,
                 });
             }
 
+            const claimedSlot =
+                await prisma.rosterSlot.updateMany({
+                    where: {
+                        id: emptySlotId,
+                        leagueSeasonId: leagueSeason.id,
+                        fantasyTeamSeasonId: fantasyTeamSeason.id,
+                        playerId: null,
+                    },
+                    data: {
+                        playerId,
+                    },
+                });
+
+                if (claimedSlot.count !== 1) {
+                    return res.status(409).json({
+                        error: "Roster changed before the player could be added. Try again.",
+                    });
+                }
+
             // Finally fill the slot
-            const updatedSlot = await prisma.rosterSlot.update({
-                where: { id: emptySlot.id },
-                data: { playerId },
+            const updatedSlot = await prisma.rosterSlot.findUnique({
+                where: { id: emptySlotId, },
                 include: {
                     player: {
-                        include: { team: true }, // nfl team
+                        include: { team: true, }, // nfl team
                     },
-                    team: true, // fantasy team
+                    fantasyTeamSeason: {
+                        select: {
+                            id: true,
+                            name: true,
+                            manager: {
+                                select: {
+                                    id: true,
+                                    username: true,
+                                },
+                            },
+                        },
+                    },
                 },
             });
 
             res.json({
                 message: "Player added to roster",
+                leagueSeasonId: leagueSeason.id,
+                season,
                 slot: updatedSlot,
             });
         } catch (err) {
+            if (hasPrismaCode(err, "P2002")) {
+                return res.status(409).json({
+                    error: "Player was added to another roster first",
+                });
+            }
             next(err);
         }
     }
@@ -409,17 +606,55 @@ playerPoolRouter.post(
     "/:leagueId/teams/:teamId/roster/drop",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const leagueId = Number(req.params.leagueId);
-            const teamId = Number(req.params.teamId);
-            const rosterSlotId = Number(req.body.rosterSlotId);
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+            const fantasyTeamId = parsePositiveInteger(req.params.teamId);
+            const rosterSlotId = parsePositiveInteger(req.body?.rosterSlotId);
+            const season = parsePositiveInteger(req.body?.season);
 
-            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId) || !Number.isFinite(rosterSlotId)) {
-                return res.status(400).json({ error: "Invalid leagueId, teamId, or rosterSlotId" });
+            if (leagueId === null || fantasyTeamId === null || rosterSlotId === null) {
+                return res.status(400).json({ error: "Invalid leagueId, teamId, or rosterSlotId", });
+            }
+
+            if (season === null) {
+                return res.status(400).json({
+                    error: "A valid season is required",
+                });
+            }
+
+            const leagueSeason = await findLeagueSeason(leagueId, season);
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `League season ${season} not found`,
+                });
+            }
+
+            const fantasyTeamSeason = await prisma.fantasyTeamSeason.findFirst({
+                where: {
+                    seasonId: leagueSeason.id,
+                    fantasyTeamId,
+                },
+                include: {
+                    fantasyTeam: {
+                        select: {
+                            leagueId: true,
+                        },
+                    },
+                },
+            });
+
+            if (!fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId ! == leagueId) {
+                return res.status(404).json({
+                    error: "Fantasy team was not found in this league's season",
+                });
             }
 
             // slot belongs to this team
             const slot = await prisma.rosterSlot.findFirst({
-                where: { id: rosterSlotId, leagueId, teamId },
+                where: { 
+                    id: rosterSlotId, 
+                    leagueSeasonId: leagueSeason.id,
+                    fantasyTeamSeasonId: fantasyTeamSeason.id, 
+                },
             });
 
             if (!slot) {
@@ -437,6 +672,8 @@ playerPoolRouter.post(
 
             res.json({
                 message: "Player dropped",
+                leagueSeasonId: leagueSeason.id,
+                season,
                 slot: updatedSlot,
             });
         } catch (err) {
