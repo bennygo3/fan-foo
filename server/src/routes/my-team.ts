@@ -1,43 +1,141 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
-import { prisma } from "../lib/prisma";
 import type { SlotType, Prisma } from "@prisma/client";
+
+import { prisma } from "../lib/prisma";
 import { getCurrentSeasonWeek } from "./services/current-week";
 import { tankGetProjections, extractPlayerProjections, extractDSTProjections } from "./services/tank-call";
 import { scoreDST } from "../scoring/dst";
+import { parse } from "path";
 
-// normalizes/verifies bye weeks for each player. TS now sees byeWeeks: Record<string,number> | null
-function jsonToByeWeeks(
-    v: Prisma.JsonValue | null | undefined
-) : Record<string, number> | null {
-    if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+export const myTeamRouter = express.Router();
 
-    const out : Record<string, number> = {};
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-        const n = typeof val === "number" ? val : Number(val);
-        if (Number.isFinite(n)) out[k] = n;
+function parsePositiveInteger(value: unknown): number | null {
+    if (
+        typeof value !== "string" &&
+        typeof value !== "number"
+    ) {
+        return null;
     }
-    return out;
+
+    const normalized = typeof value === "string" ? value.trim() : value;
+
+    if (normalized === "") return null;
+
+    const number = Number(normalized);
+
+    return Number.isInteger(number) && number > 0
+        ? number
+        : null
+        ;
 }
 
-function isGameLocked(kickoffIso: string | null) {
+function readOptionalPositiveInteger(
+    value: unknown
+): number | null | undefined {
+    if (value === undefined) return undefined;
+    return parsePositiveInteger(value);
+}
+
+async function resolveSeasonAndWeek(
+    req: Request
+): Promise<
+    | { season: number; week: number }
+    | { error: string }
+> {
+    const requestedSeason = readOptionalPositiveInteger(
+        req.query.season
+    );
+    const requestedWeek = readOptionalPositiveInteger(
+        req.query.week
+    );
+
+    if (requestedSeason === null) {
+        return { error: "Invalid season" };
+    }
+
+    if (requestedWeek === null) {
+        return { error: "Invalid week" }
+    }
+
+    if (
+        requestedSeason !== undefined &&
+        requestedWeek !== undefined
+    ) {
+        return {
+            season: requestedSeason,
+            week: requestedWeek,
+        };
+    }
+
+    const current = await getCurrentSeasonWeek();
+
+    const currentSeason = parsePositiveInteger(current.season);
+    const currentWeek = parsePositiveInteger(current.week);
+
+    const season = requestedSeason ?? currentSeason;
+    const week = requestedWeek ?? currentWeek;
+
+    if (season === null) {
+        return { error: "Unable to determine season" };
+    }
+
+    if (week === null) {
+        return { error: "Unable to determine week" };
+    }
+
+    return { season, week };
+}
+
+// normalizes/verifies bye weeks for each player. Converts Prisma JSON into a predicatble bye-week object.
+function jsonToByeWeeks(
+    value: Prisma.JsonValue | null | undefined
+): Record<string, number> | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+    const output: Record<string, number> = {};
+
+    for (const [season, byeWeek] of Object.entries(
+        value as Record<string, unknown>
+    )) {
+        const number = typeof byeWeek === "number" ? byeWeek : Number(byeWeek);
+        if (Number.isFinite(number)) output[season] = number;
+    }
+
+    return output;
+}
+
+function isGameLocked(kickoffIso: string | null): boolean {
     if (!kickoffIso) return false;
-    const t = Date.parse(kickoffIso);
-    if (!Number.isFinite(t)) return false;
-    return t <= Date.now();
+
+    const kickoffTime = Date.parse(kickoffIso);
+
+    if (!Number.isFinite(kickoffTime)) return false;
+
+    return kickoffTime <= Date.now();
 }
 
-function canSlotAcceptPlayer(slotType: SlotType, playerPos: string) {
+function canSlotAcceptPlayer(
+    slotType: SlotType,
+    playerPos: string
+): boolean {
     if (slotType === "BN") return true;
     if (slotType === "IR") return false; // need to: link data from an external call for weekly injury status
-    if (slotType === "FLEX") return playerPos === "RB" || playerPos === "WR" || playerPos === "TE";
-    return slotType === (playerPos as SlotType)
+    if (slotType === "FLEX") {
+        return (
+            playerPos === "RB" ||
+            playerPos === "WR" ||
+            playerPos === "TE"
+        );
+    }
+
+    return slotType === (playerPos as SlotType);
 }
 
 type DecoratedRosterSlot = {
     id: number;
-    leagueId: number;
-    teamId: number;
+    leagueSeasonId: number;
+    fantasyTeamSeasonId: number;
     playerId: number | null;
     slot: SlotType;
     createdAt: Date,
@@ -63,53 +161,91 @@ type DecoratedRosterSlot = {
     isHome: boolean | null;
     projPts: number | null;
     livePts: number | null;
-
 };
-
-export const myTeamRouter = express.Router();
 
 myTeamRouter.get(
     "/:leagueId/teams/:teamId/roster",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const leagueId = Number(req.params.leagueId);
-            const teamId = Number(req.params.teamId);
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+            const teamId = parsePositiveInteger(req.params.teamId);
 
-            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
-                return res.status(400).json({ error: "Invalid leagueId or teamId" });
+            if (leagueId === null || teamId === null) {
+                return res.status(400).json({ error: "Invalid leagueId or teamId", });
             }
 
-            const seasonParam = req.query.season as string | undefined;
-            const weekParam = req.query.week as string | undefined;
+            const seasonWeek = await resolveSeasonAndWeek(req);
 
-            let season: number;
-            let week: number;
-
-            if (seasonParam && weekParam) {
-                season = Number(seasonParam);
-                week = Number(weekParam);
-            } else {
-                const current = await getCurrentSeasonWeek();
-                season = current.season;
-                week = current.week;
+            if ("error" in seasonWeek) {
+                return res.status(400).json({
+                    error: seasonWeek.error,
+                });
             }
 
-            // Load team-manager
-            const team = await prisma.fantasyTeam.findFirst({
-                where: { id: teamId, leagueId },
-                include: {
-                    manager: { select: { id: true, username: true, email: true } },
-                    league: { select: { id: true, name: true } },
-                },
-            });
+            const { season, week } = seasonWeek;
 
-            if (!team) {
-                return res.status(404).json({ error: "Team no aqui" });
+            const leagueSeason =
+                await prisma.leagueSeason.findUnique({
+                    where: {
+                        leagueId_season: {
+                            leagueId,
+                            season,
+                        },
+                    },
+                })
+                ;
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `League season ${season} not found`,
+                });
             }
 
-            // Load all roster slots for this team
+            /*
+            * The route's teamId remains the permanent FantasyTeam Id.
+            * The roster belongs to that team's FantasyTeamSeason for the req year. 
+            */
+            const fantasyTeamSeason = 
+                await prisma.fantasyTeamSeason.findUnique({
+                    where: {
+                        seasonId_fantasyTeamId: {
+                            seasonId: leagueSeason.id,
+                            fantasyTeamId: teamId,
+                        },
+                    },
+                    include: {
+                        fantasyTeam: {
+                            include: {
+                                league: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
+                        manager: {
+                            select: {
+                                id: true,
+                                username: true,
+                            },
+                        },
+                    },
+                })
+            ;
+
+            if (!fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId !== leagueId) {
+                return res.status(404).json({
+                    error: `Team not found for the ${season} league season`,
+                });
+            }
+
+            // load all roster slots for team
             const slots = await prisma.rosterSlot.findMany({
-                where: { leagueId, teamId },
+                where: {
+                    leagueSeasonId: leagueSeason.id,
+                    fantasyTeamSeasonId: fantasyTeamSeason.id,
+                },
                 include: {
                     player: {
                         include: {
@@ -125,14 +261,16 @@ myTeamRouter.get(
                         },
                     },
                 },
-                orderBy: { id: "asc" },
+                orderBy: {
+                    id: "asc",
+                },
             });
 
             const games = await prisma.game.findMany({
-                where: { season, week },
+                where: { season, week, },
                 include: {
-                    homeTeam: { select: { abbr: true } },
-                    awayTeam: { select: { abbr: true } },
+                    homeTeam: { select: { abbr: true }, },
+                    awayTeam: { select: { abbr: true }, },
                 },
             });
 
@@ -143,6 +281,7 @@ myTeamRouter.get(
 
             for (const g of games) {
                 const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
+                
                 const homeAbbr = g.homeTeam.abbr.toUpperCase();
                 const awayAbbr = g.awayTeam.abbr.toUpperCase();
 
@@ -159,115 +298,139 @@ myTeamRouter.get(
                 });
             }
 
-            const projMap = new Map<string, number>(); // playerID -> projPts
-            const dstProjMap = new Map<string, number>(); // teamAbv -> projPts
+            const playerProjectionByExternalId = new Map<string, number>(); // playerID -> projPts
+            const dstProjectionByTeam = new Map<string, number>(); // teamAbv -> projPts
 
             try {
-                const projResp = await tankGetProjections({ week, season });
+                const projResp = await tankGetProjections({ season, week, });
 
-                const rows = extractPlayerProjections(projResp);
-                for (const r of rows) {
-                    const id = String(r?.playerID ?? r?.espnID ?? "");
-                    if (!id) continue;
-                    const projPts = Number(r?.fantasyPoints ?? r?.points ?? 0);
-                    projMap.set(id, Number.isFinite(projPts) ? projPts : 0);
+                const playerProjections = extractPlayerProjections(projResp);
+                
+                for (const projection of playerProjections) {
+                    const externalId = String(
+                        projection?.playerID ?? 
+                        projection?.espnID ?? 
+                        ""
+                    );
+
+                    if (!externalId) continue;
+
+                    const projectedPts = Number(
+                        projection?.fantasyPoints ?? 
+                        projection?.points 
+                        ?? 
+                        0
+                    );
+                    
+                    playerProjectionByExternalId.set(
+                        externalId, 
+                        Number.isFinite(projectedPts) 
+                        ? projectedPts 
+                        : 0
+                    );
                 }
 
-                const dstRows = extractDSTProjections(projResp);
-                for (const d of dstRows) {
-                    const teamAbv = String(d?.teamAbv ?? d?.team ?? "").toUpperCase();
+                const dstProjections = extractDSTProjections(projResp);
+                
+                for (const projection of dstProjections) {
+                    const teamAbv = String(
+                        projection?.teamAbv ?? 
+                        projection?.team ?? 
+                        ""
+                    ).toUpperCase();
+
                     if (!teamAbv) continue;
 
-                    const scored = scoreDST({
-                        teamAbv,
-                        sacks: Number(d?.sacks ?? 0),
-                        interceptions: Number(d?.interceptions ?? 0),
-                        fumbleRecoveries: Number(d?.fumbleRecoveries ?? 0),
-                        safeties: Number(d?.safeties ?? 0),
-                        defTD: Number(d?.defTD ?? 0),
-                        returnTD: Number(d?.returnTD ?? 0),
-                        blockKick: Number(d?.blockKick ?? 0),
-                        ptsAgainst: Number(d?.ptsAgainst ?? 99),
-                        yardsAgainst: Number(d?.yardsAgainst ?? 0),
+                    const projectedPoints = scoreDST({
+                        teamAbv: teamAbv,
+                        sacks: Number(projection?.sacks ?? 0),
+                        interceptions: Number(projection?.interceptions ?? 0),
+                        fumbleRecoveries: Number(projection?.fumbleRecoveries ?? 0),
+                        safeties: Number(projection?.safeties ?? 0),
+                        defTD: Number(projection?.defTD ?? 0),
+                        returnTD: Number(projection?.returnTD ?? 0),
+                        blockKick: Number(projection?.blockKick ?? 0),
+                        ptsAgainst: Number(projection?.ptsAgainst ?? 99),
+                        yardsAgainst: Number(projection?.yardsAgainst ?? 0),
                     });
 
-                    dstProjMap.set(teamAbv, scored);
+                    dstProjectionByTeam.set(teamAbv, projectedPoints);
                 }
-            } catch (err) {
-                console.error("[roster] projection error:", err);
+            } catch (error) {
+                console.error("[roster] projection error:", error);
             }
 
             const decorated: DecoratedRosterSlot[] = slots.map((slot) => {
-                const p = slot.player;
+                const player = slot.player;
 
-                const teamByeWeeksBySeason = jsonToByeWeeks(p?.team?.byeWeeksBySeason);
+                const byeWeeksBySeason = jsonToByeWeeks(player?.team?.byeWeeksBySeason);
 
-                const teamAbv = p?.team?.abbr ? p.team.abbr.toUpperCase() : null;
+                const teamAbv = player?.team?.abbr ? player.team.abbr.toUpperCase() : null;
                 const matchup = teamAbv ? matchupByTeamAbbr.get(teamAbv) : undefined;
 
-                const byeWeekForSeason = teamByeWeeksBySeason ? teamByeWeeksBySeason[String(season)] : null;
+                const byeWeek = byeWeeksBySeason?.[String(season)] ?? null;
 
-                // const byeWeeksBySeason = (p?.team?.byeWeeksBySeason ?? null) as Record<string, number> | null;
-                // const byeWeekForSeason = teamAbv && byeWeeksBySeason ? byeWeeksBySeason[String(season)] : null;
-
-                const isBye = Number(byeWeekForSeason) === Number(week);
+                const isBye = byeWeek !== null && byeWeek === week;
 
                 const oppAbv = matchup ? matchup.oppAbv : isBye ? "BYE" : null;
+                
                 const kickoffIso = matchup?.kickoffIso ?? null;
 
                 let projPts: number | null = null;
-                if (p) {
-                    if (p.position === "DST") {
+
+                if (player) {
+                    if (player.position === "DST") {
                         projPts = teamAbv
-                            ? dstProjMap.get(teamAbv) ?? null
+                            ? dstProjectionByTeam.get(teamAbv) ?? null
                             : null;
                     } else {
-                        const externalProj = p.externalId
-                            ? projMap.get(p.externalId) ?? null
+                        const externalProj = player.externalId
+                            ? playerProjectionByExternalId.get(player.externalId) ?? null
                             : null;
-                        projPts = externalProj ?? p.projPts ?? null;
+
+                        projPts = externalProj ?? player.projPts ?? null;
                     }
                 }
 
                 return {
                     id: slot.id,
-                    leagueId: slot.leagueId,
-                    teamId: slot.teamId,
+                    leagueSeasonId: slot.leagueSeasonId,
+                    fantasyTeamSeasonId: slot.fantasyTeamSeasonId,
                     playerId: slot.playerId ?? null,
                     slot: slot.slot,
                     createdAt: slot.createdAt,
 
-                    player: p 
+                    player: player
                         ? {
-                            id : p.id,
-                            name: p.name,
-                            position: p.position,
-                            externalId: p.externalId ?? null,
-                            projPts: p.projPts ?? null,
-                            headshotUrl: p.headshotUrl ?? null,
-                            team: p.team
+                            id: player.id,
+                            name: player.name,
+                            position: player.position,
+                            externalId: player.externalId ?? null,
+                            projPts: player.projPts ?? null,
+                            headshotUrl: player.headshotUrl ?? null,
+                            team: player.team
                                 ? {
-                                    id : p.team.id,
-                                    abbr: p.team.abbr,
-                                    name: p.team.name,
-                                    logoUrl: p.team.logoUrl ?? null,
-                                    byeWeeksBySeason: teamByeWeeksBySeason,
+                                    id: player.team.id,
+                                    abbr: player.team.abbr,
+                                    name: player.team.name,
+                                    logoUrl: player.team.logoUrl ?? null,
+                                    byeWeeksBySeason,
                                 }
-                            : null,
+                                : null,
                         }
-                    : null,
+                        : null,
 
                     oppAbv,
                     kickoffIso,
                     isHome: matchup?.isHome ?? null,
-                    projPts, 
+                    projPts,
                     livePts: null,
                 };
             });
 
-            const starters: typeof decorated = [];
-            const bench: typeof decorated = [];
-            const ir: typeof decorated = [];
+            const starters: DecoratedRosterSlot[] = [];
+            const bench: DecoratedRosterSlot[] = [];
+            const ir: DecoratedRosterSlot[] = [];
 
             for (const slot of decorated) {
                 if (slot.slot === "IR") {
@@ -292,28 +455,33 @@ myTeamRouter.get(
                 IR: 100,
             };
 
-            starters.sort((a, b) => {
-                const pa = slotPriority[a.slot] ?? 999;
-                const pb = slotPriority[b.slot] ?? 999;
-                if (pa !== pb) return pa - pb;
-                return a.id - b.id;
+            starters.sort((first, second) => {
+                const firstPriority = slotPriority[first.slot] ?? 999;
+                const secondPriority = slotPriority[second.slot] ?? 999;
+
+                if (firstPriority !== secondPriority) {
+                    return firstPriority - secondPriority;
+                } 
+
+                return first.id - second.id;
             });
 
             // shape response for frontend
             res.json({
                 leagueId,
                 team: {
-                    id: team.id,
-                    name: team.name,
-                    league: team.league,
-                    manager: team.manager ?? null,
+                    id: fantasyTeamSeason.fantasyTeam.id, // Permanent fantasyteam id
+                    fantasyTeamSeasonId: fantasyTeamSeason.id, // this team's record for the selected year
+                    name: fantasyTeamSeason.name, // use the historical name for this season
+                    league: fantasyTeamSeason.fantasyTeam.league,
+                    manager: fantasyTeamSeason.manager ?? null,
                 },
                 week,
                 season,
-                roster: { starters, bench, ir },
+                roster: { starters, bench, ir, },
             });
-        } catch (err) {
-            next(err);
+        } catch (error) {
+            next(error);
         }
     }
 );
@@ -322,17 +490,17 @@ myTeamRouter.post(
     "/:leagueId/teams/:teamId/roster/move",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const leagueId = Number(req.params.leagueId);
-            const teamId = Number(req.params.teamId);
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+            const teamId = parsePositiveInteger(req.params.teamId);
 
-            if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+            if (leagueId === null || teamId === null) {
                 return res.status(400).json({ error: "Invalid league id or team id" });
             }
 
-            const fromRosterSlotId = Number(req.body?.fromRosterSlotId);
-            const toRosterSlotId = Number(req.body?.toRosterSlotId);
+            const fromRosterSlotId = parsePositiveInteger(req.body?.fromRosterSlotId);
+            const toRosterSlotId = parsePositiveInteger(req.body?.toRosterSlotId);
 
-            if (!Number.isFinite(fromRosterSlotId) || !Number.isFinite(toRosterSlotId)) {
+            if (fromRosterSlotId === null || toRosterSlotId === null) {
                 return res.status(400).json({ error: "Invalid move from/to" });
             }
 
@@ -340,23 +508,84 @@ myTeamRouter.post(
                 return res.json({ message: "No-op", moved: false });
             }
 
+            const seasonWeek = await resolveSeasonAndWeek(req);
+
+            if ("error" in seasonWeek) {
+                return res.status(400).json({
+                    error: seasonWeek.error,
+                });
+            }
+
+            const { season, week} = seasonWeek;
+
+            const leagueSeason =
+                await prisma.leagueSeason.findUnique({
+                    where: {
+                        leagueId_season: {
+                            leagueId,
+                            season,
+                        },
+                    },
+                })
+            ;
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `League season ${season} not found`,
+                });
+            }
+
+            const fantasyTeamSeason =
+                await prisma.fantasyTeamSeason.findUnique({
+                    where: {
+                        seasonId_fantasyTeamId: {
+                            seasonId: leagueSeason.id,
+                            fantasyTeamId: teamId,
+                        },
+                    },
+                    include: {
+                        fantasyTeam: {
+                            select: {
+                                leagueId: true,
+                            },
+                        },
+                    },
+                });
+
+            if (
+                !fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId !== leagueId
+            ) {
+                return res.status(404).json({
+                    error: `Team not found for the ${season} league's season`,
+                });
+            }
+
             const slots = await prisma.rosterSlot.findMany({
                 where: {
-                    id: { in: [fromRosterSlotId, toRosterSlotId] },
-                    leagueId,
-                    teamId,
+                    id: { 
+                        in: [
+                            fromRosterSlotId, 
+                            toRosterSlotId,
+                        ],
+                    },
+                    leagueSeasonId: leagueSeason.id,
+                    fantasyTeamSeasonId: fantasyTeamSeason.id,
                 },
                 include: {
                     player: {
                         include: {
-                            team: { select: { abbr: true } },
+                            team: { 
+                                select: { 
+                                    abbr: true, 
+                                }, 
+                            },
                         },
                     },
                 },
             });
 
-            const fromSlot = slots.find((s) => s.id === fromRosterSlotId) ?? null;
-            const toSlot = slots.find((s) => s.id === toRosterSlotId) ?? null;
+            const fromSlot = slots.find((slot) => slot.id === fromRosterSlotId) ?? null;
+            const toSlot = slots.find((slot) => slot.id === toRosterSlotId) ?? null;
 
             if (!fromSlot || !toSlot) {
                 return res.status(404).json({ error: "Roster slot not found for this team" });
@@ -366,41 +595,33 @@ myTeamRouter.post(
                 return res.status(400).json({ error: "No player in source slot" });
             }
 
-            const seasonParam = req.query.season as string | undefined;
-            const weekParam = req.query.week as string | undefined;
-
-            let season: number;
-            let week: number;
-
-            if (seasonParam && weekParam) {
-                season = Number(seasonParam);
-                week = Number(weekParam);
-            } else {
-                const current = await getCurrentSeasonWeek();
-                season = current.season;
-                week = current.week;
-            }
-
             // build kickoffByTeam from schedule
             const games = await prisma.game.findMany({
-                where: { season, week },
-                include: { homeTeam: { select: { abbr: true } }, awayTeam: { select: { abbr: true } } },
+                where: { season, week, },
+                include: { homeTeam: { select: { abbr: true, }, }, awayTeam: { select: { abbr: true, }, }, },
             });
 
             const kickoffByTeam = new Map<string, string | null>();
-            for (const g of games) {
-                const kickoffIso = g.startTime ? g.startTime.toISOString() : null;
-                kickoffByTeam.set(g.homeTeam.abbr.toUpperCase(), kickoffIso);
-                kickoffByTeam.set(g.awayTeam.abbr.toUpperCase(), kickoffIso);
+            
+            for (const game of games) {
+                const kickoffIso = game.startTime 
+                    ? game.startTime.toISOString() 
+                    : null
+                ;
+
+                kickoffByTeam.set(game.homeTeam.abbr.toUpperCase(), kickoffIso);
+                kickoffByTeam.set(game.awayTeam.abbr.toUpperCase(), kickoffIso);
             }
 
-            const fromTeamAbbr = fromSlot.player?.team?.abbr?.toUpperCase() ?? null;
+            const fromTeamAbbr = fromSlot.player.team?.abbr?.toUpperCase() ?? null;
             const fromKickoff = fromTeamAbbr ? kickoffByTeam.get(fromTeamAbbr) ?? null : null;
 
             let toKickoff: string | null = null;
+
             if (toSlot.playerId && toSlot.player?.team?.abbr) {
-                const abbr = toSlot.player.team.abbr.toUpperCase();
-                toKickoff = kickoffByTeam.get(abbr) ?? null;
+                const toTeamAbbr = toSlot.player.team.abbr.toUpperCase();
+
+                toKickoff = kickoffByTeam.get(toTeamAbbr) ?? null;
             }
 
             if (isGameLocked(fromKickoff) || isGameLocked(toKickoff)) {
@@ -426,43 +647,49 @@ myTeamRouter.post(
             }
 
             // swapping players in lineup
-            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const result = await prisma.$transaction(
+                async (
+                    transaction: Prisma.TransactionClient
+                ) => {
                 const fromPlayerId = fromSlot.playerId!;
                 const toPlayerId = toSlot.playerId ?? null;
 
-                await tx.rosterSlot.update({
+                await transaction.rosterSlot.update({
                     where: { id: fromSlot.id },
                     data: { playerId: null },
                 });
 
-                await tx.rosterSlot.update({
+                await transaction.rosterSlot.update({
                     where: { id: toSlot.id },
-                    data: { playerId: fromPlayerId },
+                    data: { playerId: fromPlayerId, },
                 });
 
-                if (toPlayerId) {
-                    await tx.rosterSlot.update({
+                if (toPlayerId !== null) {
+                    await transaction.rosterSlot.update({
                         where: { id: fromSlot.id },
-                        data: { playerId: toPlayerId },
+                        data: { playerId: toPlayerId, },
                     });
                 }
 
                 return {
                     fromRosterSlotId: fromSlot.id,
                     toRosterSlotId: toSlot.id,
-                    swapped: !!toPlayerId,
+                    swapped: toPlayerId !== null,
                 };
             });
 
             res.json({
                 message: result.swapped ? "Swapped" : "Moved",
                 ...result,
+                leagueId,
+                leagueSeasonId: leagueSeason.id,
+                fantasyTeamSeasonId: fantasyTeamSeason.id,
                 season,
                 week,
             });
-        } catch (err) {
-            console.error("[roster/move] error:", err);
-            next(err);
+        } catch (error) {
+            console.error("[roster/move] error:", error);
+            next(error);
         }
     }
 );
