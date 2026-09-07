@@ -64,6 +64,8 @@ model LeagueSeason {
 
   league League @relation(fields: [leagueId], references: [id])
 
+  draft Draft?
+
   teams    FantasyTeamSeason[]
   matchups FantasyMatchup[]
 
@@ -101,6 +103,9 @@ model FantasyTeamSeason {
   fantasyTeam FantasyTeam  @relation(fields: [fantasyTeamId], references: [id])
   manager     User?        @relation(fields: [managerId], references: [id])
 
+  draftParticipants DraftParticipant[]
+  draftPicks        DraftPick[]
+
   homeMatchups FantasyMatchup[] @relation("HomeFantasyTeamSeason")
   awayMatchups FantasyMatchup[] @relation("AwayFantasyTeamSeason")
 
@@ -114,6 +119,65 @@ model FantasyTeamSeason {
   @@unique([id, seasonId]) // supports RosterSlot's compound seasonal-team relationship.
   @@index([managerId])
   @@index([fantasyTeamId])
+}
+
+model Draft {
+  id Int @id @default(autoincrement())
+
+  leagueSeasonId Int          @unique
+  leagueSeason   LeagueSeason @relation(fields: [leagueSeasonId], references: [id], onDelete: Cascade)
+
+  status             DraftStatus @default(SETUP)
+  rounds             Int         @default(17)
+  currentOverallPick Int         @default(1)
+
+  participants DraftParticipant[]
+  picks        DraftPick[]
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model DraftParticipant {
+  id Int @id @default(autoincrement())
+
+  draftId             Int
+  fantasyTeamSeasonId Int
+  draftPosition       Int
+
+  draft             Draft             @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  fantasyTeamSeason FantasyTeamSeason @relation(fields: [fantasyTeamSeasonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([draftId, fantasyTeamSeasonId])
+  @@unique([draftId, draftPosition])
+  @@index([fantasyTeamSeasonId])
+}
+
+model DraftPick {
+  id Int @id @default(autoincrement())
+
+  draftId             Int
+  fantasyTeamSeasonId Int
+  playerId            Int
+  overallPick         Int
+  round               Int
+  pickInRound         Int
+
+  draft             Draft             @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  fantasyTeamSeason FantasyTeamSeason @relation(fields: [fantasyTeamSeasonId], references: [id])
+  player            Player            @relation(fields: [playerId], references: [id])
+
+  madeAt DateTime @default(now())
+
+  @@unique([draftId, overallPick])
+  @@unique([draftId, playerId])
+  @@index([fantasyTeamSeasonId, overallPick])
+  @@index([playerId])
 }
 
 model FantasyMatchup {
@@ -176,14 +240,16 @@ model Team {
 }
 
 model Player {
-  id           Int          @id @default(autoincrement())
-  name         String
-  position     String
-  teamId       Int?
-  team         Team?        @relation(fields: [teamId], references: [id])
-  headshotUrl  String?
-  externalId   String?      @unique
-  externalSrc  String?
+  id          Int     @id @default(autoincrement())
+  name        String
+  position    String
+  teamId      Int?
+  team        Team?   @relation(fields: [teamId], references: [id])
+  headshotUrl String?
+  externalId  String? @unique
+  externalSrc String?
+
+  draftPicks   DraftPick[]
   projPts      Float?
   adp          Float?
   lastSyncedAt DateTime?
@@ -232,6 +298,13 @@ enum SlotType {
   K
   BN
   IR
+}
+
+enum DraftStatus {
+  SETUP
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
 }
 
 enum FantasyMatchupType {
