@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma";
 
 const LEAGUE_NAME = "Forever Unclean";
 const DRAFT_SEASON = 2026;
-const DRAFT_ROUNDS = 17;
+const DRAFT_ROUNDS = 16;
 
 const DRAFT_ORDER = [
     { displayName: "Shea N", username: "SheaNo" },

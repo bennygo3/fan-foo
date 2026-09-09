@@ -143,7 +143,11 @@ playerPoolRouter.get(
                     : orderParam === "desc" ? "desc" : "asc"
                 ;
 
-            const and: Prisma.PlayerWhereInput[] = [];
+            const and: Prisma.PlayerWhereInput[] = [
+                {
+                    isActive: true,
+                },
+            ];
 
             if (search) {
                 and.push({

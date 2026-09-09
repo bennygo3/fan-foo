@@ -128,7 +128,7 @@ model Draft {
   leagueSeason   LeagueSeason @relation(fields: [leagueSeasonId], references: [id], onDelete: Cascade)
 
   status             DraftStatus @default(SETUP)
-  rounds             Int         @default(17)
+  rounds             Int         @default(16)
   currentOverallPick Int         @default(1)
 
   participants DraftParticipant[]
@@ -253,6 +253,7 @@ model Player {
   projPts      Float?
   adp          Float?
   lastSyncedAt DateTime?
+  isActive     Boolean      @default(true)
   RosterSlot   RosterSlot[]
 
   createdAt DateTime @default(now())

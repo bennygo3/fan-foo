@@ -1,7 +1,7 @@
 import { syncTankPlayersToDb } from "../routes/services/sync-players";
 
 async function main() {
-    await syncTankPlayersToDb("2025");
+    await syncTankPlayersToDb("2026");
     console.log("✅ Finished syncing Tank players DB");
 }
 

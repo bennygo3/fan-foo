@@ -23,7 +23,7 @@ export const nfl = express.Router();
 // GET /nfl/players?season=2025
 nfl.get("/players", async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const season = (req.query.season as string) ?? "2025";
+        const season = (req.query.season as string) ?? "2026";
         const weekParam = (req.query.week as string) ?? "";
         const search = (req.query.search as string) ?? "";
         const position = (req.query.position as string) ?? "";
@@ -110,7 +110,7 @@ nfl.get("/players", async (req: Request, res: Response, next: NextFunction) => {
 
 nfl.get("/dst", async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const season = (req.query.season as string) ?? "2025";
+        const season = (req.query.season as string) ?? "2026";
         const week = (req.query.week as string) ?? "1";
         const sort = (req.query.sort as string) ?? "proj";
         const teamAbv = (req.query.teamAbv as string) ?? "";

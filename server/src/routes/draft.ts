@@ -525,6 +525,9 @@ draftRouter.post(
                         fantasyTeamSeasonId: {
                             in: participantIds,
                         },
+                        slot: {
+                            not: "IR",
+                        },
                     },
                 }),
                 prisma.rosterSlot.count({
@@ -700,6 +703,7 @@ draftRouter.post(
                                 id: true,
                                 name: true,
                                 position: true,
+                                isActive: true,
                                 headshotUrl: true,
                                 team: {
                                     select: {
@@ -711,11 +715,18 @@ draftRouter.post(
                                 },
                             },
                         });
-                    
+
                     if (!player) {
                         throw createHttpError(
                             404,
                             "Player not found"
+                        );
+                    }
+                    
+                    if (!player.isActive) {
+                        throw createHttpError(
+                            404,
+                            `${player.name} is not active for the current player pool`
                         );
                     }
 

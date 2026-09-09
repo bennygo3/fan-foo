@@ -25,7 +25,7 @@ export default function Players() {
     const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
 
     const { data, isLoading, isError, error, isFetching, refetch } = useNFLPlayers({
-        season: "2025",
+        season: "2026",
         week,
         search: debouncedSearch,
         position,

@@ -3,7 +3,7 @@ import { tankGetTeamsWithRosters } from "../routes/services/tank-call";
 import { normalizeByeWeeksBySeason } from "../lib/byeWeeks";
 
 async function main() {
-    const season = "2025";
+    const season = "2026";
     const api = await tankGetTeamsWithRosters(season);
     const rows: any[] = api?.body ?? [];
 
