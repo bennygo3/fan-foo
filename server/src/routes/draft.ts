@@ -1,7 +1,8 @@
 import express from "express";
 import type { Request, Response, NextFunction, } from "express";
-
+import type { SlotType } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { parse } from "path";
 
 export const draftRouter = express.Router();
 
@@ -63,6 +64,49 @@ async function findLeagueSeason(
             },
         },
     });
+}
+
+function createHttpError(
+    status: number,
+    message: string
+) : Error & { status: number } {
+    return Object.assign(new Error(message), {
+        status,
+    });
+}
+
+function hasPrismaCode(
+    error: unknown,
+    code: string
+) : boolean {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: unknown }).code === code
+    );
+}
+
+function getRosterSlotPreference(
+    position: string
+) : SlotType[] | null {
+    switch (position.toUpperCase()) {
+        case "QB":
+            return ["QB", "BN"];
+        case "RB":
+            return ["RB", "BN"];
+        case "WR":
+            return ["WR", "BN"];
+        case "TE":
+            return ["TE", "BN"];
+        case "DST":
+            return ["DST", "BN"];
+        case "K":
+            return ["K", "BN"];
+        
+        default: 
+            return null;
+    }
 }
 
 // GET /leagues/:leagueId/draft?season=2026
@@ -537,6 +581,494 @@ draftRouter.post(
                 status: "IN_PROGRESS",
                 currentOverallPick: 1,
                 startedAt,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
+
+// POST /draft/picks
+draftRouter.post(
+    "/:leagueId/draft/picks",
+    async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+
+            const season = parsePositiveInteger(req.body?.season);
+
+            const playerId = parsePositiveInteger(req.body?.playerId);
+
+            if (leagueId === null) {
+                return res.status(400).json({ error: "Invalid leagueId", });
+            }
+
+            if (season === null) {
+                return res.status(400).json({ error: "A valid season is required", });
+            }
+
+            if (playerId === null) {
+                return res.status(400).json({ error: "a valid player id is required", });
+            }
+
+            const leagueSeason = await findLeagueSeason(
+                leagueId,
+                season
+            );
+
+            if (!leagueSeason) {
+                return res.status(404).json({ error: `League season ${season} not found`, });
+            }
+
+            const result = await prisma.$transaction(
+                async (transaction) => {
+                    const draft = await transaction.draft.findUnique({
+                        where: {
+                            leagueSeasonId:
+                                leagueSeason.id,
+                        },
+                        include: {
+                            participants: {
+                                orderBy: {
+                                    draftPosition: 
+                                        "asc",
+                                },
+                            },
+                        },
+                    });
+
+                    if (!draft) {
+                        throw createHttpError(
+                            404,
+                            `Draft not found for ${season}`
+                        );
+                    }
+
+                    if (draft.status !== "IN_PROGRESS") {
+                        throw createHttpError(
+                            409,
+                            `Draft is not in progress. Current status: ${draft.status}`
+                        );
+                    }
+
+                    const participantCount = draft.participants.length;
+
+                    if (participantCount === 0) {
+                        throw createHttpError(
+                            409,
+                            "Draft has no participants"
+                        );
+                    }
+
+                    const totalPicks = participantCount * draft.rounds;
+
+                    const overallPick = draft.currentOverallPick;
+
+                    if (overallPick > totalPicks) {
+                        throw createHttpError(
+                            409,
+                            "The draft has no remaining picks"
+                        );
+                    }
+
+                    const snakePick = getSnakePick(
+                        overallPick,
+                        participantCount
+                    );
+
+                    const participant = draft.participants.find(
+                        (entry) => entry.draftPosition === snakePick.draftPosition
+                    );
+
+                    if (!participant) {
+                        throw createHttpError(
+                            409,
+                            "Unable to determine the team on the clock"
+                        );
+                    }
+
+                    const player = 
+                        await transaction.player.findUnique({
+                            where: {
+                                id: playerId,
+                            },
+                            select: {
+                                id: true,
+                                name: true,
+                                position: true,
+                                headshotUrl: true,
+                                team: {
+                                    select: {
+                                        id: true,
+                                        abbr: true,
+                                        name: true,
+                                        logoUrl: true,
+                                    },
+                                },
+                            },
+                        });
+                    
+                    if (!player) {
+                        throw createHttpError(
+                            404,
+                            "Player not found"
+                        );
+                    }
+
+                    const slotPreference = getRosterSlotPreference(
+                        player.position
+                    );
+
+                    if (!slotPreference) {
+                        throw createHttpError(
+                            409,
+                            `Players at position ${player.position} cannot be drafted`
+                        );
+                    }
+
+                    const existingPick = 
+                        await transaction.draftPick.findFirst({
+                            where: {
+                                draftId: draft.id,
+                                playerId: player.id,
+                            },
+                            select: {
+                                id: true,
+                            },
+                        });
+
+                    if (existingPick) {
+                        throw createHttpError(
+                            409,
+                            `${player.name} has already been drafted`
+                        );
+                    }
+
+                    const emptyRosterSlots =
+                        await transaction.rosterSlot.findMany({
+                            where: {
+                                leagueSeasonId: leagueSeason.id,
+                                fantasyTeamSeasonId: participant.fantasyTeamSeasonId,
+                                playerId: null,
+                                slot: {
+                                    not: "IR",
+                                },
+                            },
+                            select: {
+                                id: true,
+                                slot: true,
+                            },
+                            orderBy: {
+                                id: "asc",
+                            },
+                        });
+                    
+                    let selectedRosterSlot: 
+                        | (typeof emptyRosterSlots)[number]
+                        | undefined;
+
+                    for (const preferredSlot of slotPreference) {
+                        selectedRosterSlot = 
+                            emptyRosterSlots.find(
+                                (rosterSlot) => 
+                                    rosterSlot.slot ===
+                                    preferredSlot
+                            );
+                        
+                        if (selectedRosterSlot) break;
+                    }
+
+                    if (!selectedRosterSlot) {
+                        throw createHttpError(
+                            409,
+                            `${participant.fantasyTeamSeasonId} does not have an eligible empty roster slot for ${player.position}`
+                        );
+                    }
+
+                    const pick =
+                        await transaction.draftPick.create({
+                            data: {
+                                draftId: draft.id,
+                                fantasyTeamSeasonId: participant.fantasyTeamSeasonId,
+                                playerId: player.id,
+                                overallPick,
+                                round: snakePick.round,
+                                pickInRound: snakePick.pickInRound,
+                            },
+                            include: {
+                                player: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        position: true,
+                                        headshotUrl: true,
+                                        team: {
+                                            select: {
+                                                id: true,
+                                                abbr: true,
+                                                name: true,
+                                                logoUrl: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                fantasyTeamSeason: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        fantasyTeamId: true,
+                                        manager: {
+                                            select: {
+                                                id: true,
+                                                username: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        });
+                    
+                    const claimedRosterSlot = 
+                        await transaction.rosterSlot.updateMany({
+                            where: {
+                                id: selectedRosterSlot.id,
+                                leagueSeasonId: leagueSeason.id,
+                                fantasyTeamSeasonId: participant.fantasyTeamSeasonId,
+                                playerId: null,
+                            },
+                            data: {
+                                playerId: player.id,
+                            },
+                        });
+                    
+                    if (claimedRosterSlot.count !== 1) {
+                        throw createHttpError(
+                            409,
+                            "The selected roster slot changed before the pick completed"
+                        );
+                    }
+
+                    const nextOverallPick = overallPick + 1;
+
+                    const isFinalPick = overallPick === totalPicks;
+
+                    const advancedDraft = 
+                        await transaction.draft.updateMany({
+                            where: {
+                                id: draft.id,
+                                status: "IN_PROGRESS",
+                                currentOverallPick: overallPick,
+                            },
+                            data: isFinalPick 
+                                ? {
+                                    currentOverallPick: nextOverallPick,
+                                    status: "COMPLETED",
+                                    completedAt: new Date(),
+                                }
+                            : {
+                                currentOverallPick: nextOverallPick,
+                            },
+                        });
+
+                    if (advancedDraft.count !== 1) {
+                        throw createHttpError(
+                            409,
+                            "The draft advanced before this pick could complete"
+                        );
+                    }
+
+                    return {
+                        pick,
+                        rosterSlotId: selectedRosterSlot.id,
+                        nextOverallPick,
+                        draftStatus: isFinalPick 
+                            ? "COMPLETED"
+                            : "IN_PROGRESS",
+                    };
+                }
+            );
+
+            res.status(201).json({
+                message: "Player drafted",
+                leagueId,
+                leagueSeasonId: leagueSeason.id,
+                season,
+                ...result,
+            });
+        } catch (error) {
+            if (hasPrismaCode(error, "P2002")) {
+                return res.status(409).json({
+                    error: "That player or pick was already claimed. Refresh the draft and try again."
+                });
+            }
+
+            next(error);
+        }
+    }
+);
+
+// POST /draft/undo
+draftRouter.post(
+    "/:leagueId/draft/undo",
+    async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+
+            const season = parsePositiveInteger(req.body?.season);
+
+            if (leagueId === null) {
+                return res.status(400).json({
+                    error: "Invalid leagueId",
+                });
+            }
+
+            if (season === null) {
+                return res.status(400).json({
+                    error: "A valid season is required",
+                });
+            }
+
+            const leagueSeason = 
+                await findLeagueSeason(
+                    leagueId,
+                    season
+                );
+            
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: `LeaGUE SEASON ${season} NOT FOUND`,
+                });
+            }   
+
+            const result = await prisma.$transaction(
+                async(transaction) => {
+                    const draft =
+                        await transaction.draft.findUnique({
+                            where: {
+                                leagueSeasonId: leagueSeason.id,
+                            },
+                        });
+
+                    if (!draft) {
+                        throw createHttpError(
+                            404,
+                            `Draft not found for ${season}`
+                        );
+                    }
+
+                    const lastPick =
+                        await transaction.draftPick.findFirst({
+                            where: {
+                                draftId: draft.id,
+                            },
+                            orderBy: {
+                                overallPick: "desc",
+                            },
+                            include: {
+                                player: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        position: true,
+                                    },
+                                },
+                                fantasyTeamSeason: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        fantasyTeamId: true,
+                                        manager: {
+                                            select: {
+                                                id: true,
+                                                username: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        });
+
+                    if (!lastPick) {
+                        throw createHttpError(
+                            409,
+                            "There are no picks to undo"
+                        );
+                    }
+
+                    if (draft.currentOverallPick !== lastPick.overallPick + 1) {
+                        throw createHttpError(
+                            409,
+                            "Draaft pick state is inconsistent"
+                        );
+                    }
+
+                    const clearedRosterSlot = 
+                        await transaction.rosterSlot.updateMany({
+                            where: {
+                                leagueSeasonId: leagueSeason.id,
+                                fantasyTeamSeasonId: lastPick.fantasyTeamSeasonId,
+                                playerId: lastPick.playerId,
+                            },
+                            data: {
+                                playerId: null,
+                            },
+                        });
+
+                    if (clearedRosterSlot.count !== 1) {
+                        throw createHttpError(
+                            409,
+                            "the drafted player could not be located on the team roster"
+                        );
+                    }
+
+                    await transaction.draftPick.delete({
+                        where: {
+                            id: lastPick.id,
+                        },
+                    });
+
+                    const restoredDraft =
+                        await transaction.draft.updateMany({
+                            where: {
+                                id: draft.id,
+                                currentOverallPick: draft.currentOverallPick,
+                            },
+                            data: {
+                                currentOverallPick: lastPick.overallPick,
+                                status: "IN_PROGRESS",
+                                completedAt: null,
+                            },
+                        });
+
+                    if (restoredDraft.count !== 1) {
+                        throw createHttpError(
+                            409,
+                            "The draft changed before the pick could be undone"
+                        );
+                    }
+
+                    return {
+                        undonePick: lastPick,
+                        currentOverallPick: lastPick.overallPick,
+                        status: "IN_PROGRESS",
+                    };
+                }
+            );
+
+            res.json({
+                message: "Last pick undone",
+                leagueId,
+                leagueSeasonId: leagueSeason.id,
+                season,
+                ...result,
             });
         } catch (error) {
             next(error);
