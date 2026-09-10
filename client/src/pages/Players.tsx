@@ -3,10 +3,10 @@ import styles from './players.module.css';
 import { useDebounced } from "../hooks/useDebounced";
 import { useNFLPlayers } from "../hooks/usePlayers";
 import { getNflTeams, type NflTeam, getSchedule } from "../lib/api";
+import { CURRENT_FANTASY_SEASON, DEFAULT_LEAGUE_ID } from "../config/fantasy";
 import type { Game } from "../lib/api";
 import { addPlayerToRoster } from "../lib/api";
 
-const LEAGUE_ID = 1; // can adjust later if app expands to designate actual league id number
 const TEAM_ID = 6; // TODO: make dynamic
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
@@ -25,14 +25,14 @@ export default function Players() {
     const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
 
     const { data, isLoading, isError, error, isFetching, refetch } = useNFLPlayers({
-        season: "2026",
+        season: CURRENT_FANTASY_SEASON,
         week,
         search: debouncedSearch,
         position,
         page,
         limit,
         sort: "proj",
-        leagueId: LEAGUE_ID,
+        leagueId: DEFAULT_LEAGUE_ID,
         staleTime: 60 * 60 * 1000, // 1h cache while building
     });
 
@@ -88,7 +88,7 @@ export default function Players() {
     const onAdd = async (playerId: number) => {
         try {
             await addPlayerToRoster({
-                leagueId: LEAGUE_ID,
+                leagueId: DEFAULT_LEAGUE_ID,
                 teamId: TEAM_ID,
                 playerId,
             });
@@ -201,7 +201,7 @@ export default function Players() {
                                 : `${p.teamAbv ?? ""} ${isDst ? "D/ST" : p.position}`;
 
                             //compute bye from the player's team
-                            const effectiveSeason = String(serverSeason ?? "2025");
+                            const effectiveSeason = String(serverSeason ?? CURRENT_FANTASY_SEASON);
                             const effectiveWeek = week !== "" && week != null ? Number(week) : Number(serverWeek);
 
                             const byeWeekForTeam = teamMeta?.byeWeeksBySeason?.[effectiveSeason];

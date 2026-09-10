@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { CURRENT_FANTASY_SEASON } from "../config/fantasy";
 import { getPlayerPool } from "../lib/api";
 
 type SortKey = "name" | "position" | "team" | "proj";
 
 export function useNFLPlayers(opts: {
     leagueId: number;
-    season?: string; 
+    season?: number | string; 
     week?: number | string;
     search?: string; 
     position?: string; 
@@ -19,7 +20,7 @@ export function useNFLPlayers(opts: {
 }) {
     const {
         leagueId,
-        season = "2025", 
+        season = CURRENT_FANTASY_SEASON, 
         week,
         search = "", 
         position = "", 

@@ -1,0 +1,2 @@
+export const DEFAULT_LEAGUE_ID = 1;
+export const CURRENT_FANTASY_SEASON = 2026;
