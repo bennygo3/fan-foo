@@ -8,6 +8,7 @@ export default function App() {
     <div style={{ padding: 16 }}>
       <header style={{ display: "flex", gap: 12, marginBottom: 12 }}>
         <NavLink to="/" className={link}>Home</NavLink>
+        <NavLink to="/league/1/draft" className={link}>Draft</NavLink>
         <NavLink to="/players" className={link}>Players</NavLink>
         <NavLink to="/league/1/team/6" className={link}>My Team</NavLink>
         <NavLink to="/scoreboard" className={link}>Scoreboard</NavLink>

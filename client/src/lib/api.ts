@@ -547,7 +547,7 @@ export async function makeDraftPick(opts: {
             method: "POST",
             credentials: "include",
             headers: {
-                "Content-Type": "apllication/json",
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 season: opts.season,
@@ -574,6 +574,9 @@ export async function undoLastDraftPick(opts: {
             headers: {
                 "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+                season: opts.season,
+            }),
         }
     );
 

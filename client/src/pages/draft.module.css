@@ -1,0 +1,467 @@
+.page {
+    width: min(1200px, calc(100vw - 32px));
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    color: rgb(238, 242, 248);
+}
+
+.hero,
+.section
+.onClock {
+    border: 1px solid rgb(70, 82, 106);
+    border-radius: 14px;
+    background: rgb(27, 29, 34);
+}
+
+.hero {
+    padding: 22px;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+}
+
+.eyebrow {
+    margin: 0 0 5px;
+    color: rgb(142, 191, 255);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.title,
+.section h2,
+.onClock h2 {
+    margin: 0;
+}
+
+.title {
+    font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.summary,
+.onClock p {
+    margin: 6px 0 0;
+    color: rgb(168, 176, 191);
+}
+
+.heroActions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.status {
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.statusSetup {
+    background: rgb(56, 64, 82);
+    color: rgb(143, 240, 197);
+}
+
+.statusLive {
+    background: rgb(23, 75, 56);
+    color: rgb(143, 240, 197);
+}
+
+.statusPaused {
+    background: rgb(90, 69, 31);
+    color: rgb(255, 224, 161);
+}
+
+.statusComplete {
+    background: rgb(65, 48, 93);
+    color: rgb(217, 189, 255);
+}
+
+.primaryButton,
+.secondaryButton,
+.draftButton,
+.pagination button,
+.orderButtons button {
+    border: 1px solid rgb(96, 112, 141);
+    border-radius: 9px;
+    color: rgb(245, 247, 251);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.primaryButton {
+    padding: 10px 15px;
+    background: rgb(40, 123, 216);
+}
+
+.secondaryButton {
+    padding: 10px 15px;
+    background: rgb(41, 46, 56);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.draftButton:disabled,
+.pagination button:disabled,
+.orderButtons button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.onClock {
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-color: rgb(61, 155, 119);
+    box-shadow: 0 0 0 3px rgb(61 155 119 / 15%);
+}
+
+.onClockLabel {
+    color: rgb(127, 255, 212);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+}
+
+.onClock > strong {
+    font-size: 2.4rem;
+    color: rgb(127, 255, 212);
+}
+
+.feedback,
+.actionError {
+    margin: 0;
+    border-radius: 10px;
+    padding: 11px 14px;
+}
+
+.feedback {
+    color: rgb(143, 240, 197);
+    background: rgb(23, 59, 48);
+}
+
+.actionError,
+.stateError {
+    color: rgb(255, 179, 179);
+    background: rgb(72, 31, 39);
+}
+
+.section {
+    padding: 18px;
+}
+
+.sectionHeading {
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 16px;
+}
+
+.hint,
+.state {
+    color: rgb(168, 176, 191);
+}
+
+.orderGrid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 9px;
+}
+
+.orderCard,
+.currentOrderCard {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgb(70, 82, 106);
+    border-radius: 10px;
+    background: rgb(37, 41, 50);
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.currentOrderCard {
+    border-color: rgb(86, 200, 156);
+    background: rgb(25, 58, 49);
+}
+
+.orderNumber {
+    color: rgb(142, 191, 255);
+    font-size: 1.1rem;
+    font-weight: 900;
+}
+
+.orderIdentity {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.orderIdentity strong,
+.orderIdentity span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orderIdentity span {
+    color: rgb(168, 176, 191);
+    font-size: 0.82rem;
+}
+
+.orderButtons {
+    display: grid;
+    gap: 4px;
+}
+
+.orderButtons button {
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    background: rgb(49, 55, 68);
+}
+
+.boardScroll {
+    overflow-x: auto;
+    border: 1px solid rgb(70, 82, 106);
+    border-radius: 10px;
+}
+
+.board {
+    min-width: 1900px;
+    background: rgb(18, 20, 25);
+}
+
+.boardHeader,
+.boardRound {
+    display: grid;
+    grid-template-columns: 60px repeat(12, minmax(145px, 1fr));
+}
+
+.boardHeader {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: rgb(36, 41, 52);
+}
+
+.roundHeading,
+.teamHeading,
+.roundNumber,
+.pickCell,
+.currentPickCell {
+    border-right: 1px solid rgb(57, 66, 85);
+    border-bottom: 1px solid rgb(57, 66, 85);
+    padding: 9px;
+}
+
+.roundHeading,
+.roundNumber {
+    display: grid;
+    place-items: center;
+    color: rgb(142, 191, 255);
+    font-weight: 900;
+}
+
+.teamHeading {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.teamHeading span {
+    color: rgb(168, 176, 191);
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipses;
+    white-space: nowrap;
+}
+
+.pickCell,
+.currentPickCell {
+    min-height: 76px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: center;
+}
+
+.currentPickCell {
+    background: rgb(25, 58, 49);
+    box-shadow: inset 0 0 0 2px rgb(86, 200, 156);
+}
+
+.pickNumber {
+    color: rgb(142, 191, 255);
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.pickCell strong,
+.currentPickCell strong {
+    overflow: hidden;
+    text-overflow: ellipses;
+    white-space: nowrap;
+}
+
+.pickCell small,
+.currentPickCell small,
+.emptyPick {
+    color: rgb(140, 147, 163);
+}
+
+.playerControls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.playerControls input,
+.playerControls select {
+    border: 1px solid rgb(83, 97, 123);
+    border-radius: 9px;
+    padding: 10px;
+    background: rgb(17, 19, 24);
+    color: rgb(238, 242, 248);
+}
+
+.playerControls input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.playerList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgb(70, 82, 106);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.playerRow {
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) 80px 100px;
+    gap: 14px;
+    align-items: center;
+    border-bottom: 1px solid rgb(57, 66, 85);
+    background: rgb(23, 25, 31);
+}
+
+.playerRow:last-child {
+    border-bottom: 0;
+}
+
+.playerRow:hover {
+    background: rgb(36, 40, 50);
+}
+
+.playerIdentity {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.playerIdentity img,
+.playerFallback {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 50%;
+    border: 1px solid rgb(83, 97, 123);
+    background: white;
+}
+
+.playerIdentity img {
+    object-fit: cover;
+}
+
+.playerFallback {
+    display: grid;
+    place-items: center;
+    background: rgb(48, 54, 67);
+    color: rgb(168, 176, 191);
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.playerIdentity > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.playerIdentity strong {
+    overflow: hidden;
+    text-overflow: ellipses;
+    white-space: nowrap;
+}
+
+.playerIdentity span {
+    color: rgb(168, 176, 191);
+    font-size: 0.85rem;
+}
+
+.projection {
+    color: rgb(127, 255, 212);
+    font-weight: 900;
+}
+
+.draftButton {
+    padding: 9px 12px;
+    background: rgb(40, 123, 216);
+}
+
+.pagination {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+.pagination button {
+    padding: 8px 11px;
+    background: rgb(41, 46, 56);
+}
+
+@media (max-width: 800px) {
+    .page {
+        width: calc(100vw - 20px);
+    }
+
+    .hero,
+    .sectionHeading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .heroActions {
+        justify-content: flex-start;
+    }
+
+    .playerRow {
+        grid-template-columns: 1fr auto;
+    }
+
+    .projection {
+        display: none;
+    }
+}

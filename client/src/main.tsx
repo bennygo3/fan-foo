@@ -8,6 +8,7 @@ import App from "./App"
 import Home from "./pages/Home.tsx"
 import Players from "./pages/Players.tsx"
 import MyTeamPage from "./pages/MyTeam.tsx"
+import Draft from "./pages/Draft.tsx"
 import "./index.css"
 
 const router = createBrowserRouter([
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
             { index: true, element: <Home /> },
             { path: "players", element: <Players /> },
             { path: "league/:leagueId/team/:teamId", element: <MyTeamPage /> },
+            { path: "league/:leagueId/draft", element: <Draft /> },
         ],
     },
 ])

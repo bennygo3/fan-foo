@@ -94,11 +94,11 @@ function getRosterSlotPreference(
         case "QB":
             return ["QB", "BN"];
         case "RB":
-            return ["RB", "BN"];
+            return ["RB", "FLEX", "BN"];
         case "WR":
-            return ["WR", "BN"];
+            return ["WR", "FLEX", "BN"];
         case "TE":
-            return ["TE", "BN"];
+            return ["TE", "FLEX", "BN"];
         case "DST":
             return ["DST", "BN"];
         case "K":
