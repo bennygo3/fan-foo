@@ -104,7 +104,9 @@ export async function getMyTeam(opts: {
         `${API_BASE_URL}/leagues/${leagueId}/teams/${teamId}/roster`
     );
 
-    if (season) url.searchParams.set("season", String(season));
+    if (season !== undefined && season !== "") {
+        url.searchParams.set("season", String(season));
+    } 
     if (week !== undefined && week !== "") {
         url.searchParams.set("week", String(week));
     }

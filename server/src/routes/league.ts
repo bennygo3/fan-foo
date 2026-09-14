@@ -177,6 +177,169 @@ leagueRouter.get("/:leagueId/teams", async (req: Request, res: Response, next: N
     }
 });
 
+// GET /:leagueId/matchups
+// Returns fantasy matchups for a specific league season and week
+leagueRouter.get(
+    "/:leagueId/matchups",
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+
+            if (leagueId === null) {
+                return res.status(400).json({
+                    error: "Invalid leagueId",
+                });
+            }
+
+            const requestedSeason = readOptionalSeason(req);
+
+            if (requestedSeason === null) {
+                return res.status(400).json({
+                    error: "Invalid season",
+                });
+            }
+
+            const week = parsePositiveInteger(req.query.week);
+
+            if (week === null) {
+                return res.status(400).json({
+                    error: "Invalid or missing week",
+                });
+            }
+
+            const league = await prisma.league.findUnique({
+                where: {
+                    id: leagueId,
+                },
+            });
+
+            if (!league) {
+                return res.status(404).json({
+                    error: "League not found",
+                });
+            }
+
+            const leagueSeason = await findLeagueSeason(
+                leagueId,
+                requestedSeason
+            );
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: 
+                        requestedSeason === undefined
+                            ? "No seasons found for this league"
+                            : `League season ${requestedSeason} not found`,
+                });
+            }
+
+            const matchups = await prisma.fantasyMatchup.findMany({
+                where: {
+                    seasonId: leagueSeason.id,
+                    week,
+                },
+                select: {
+                    id: true,
+                    week: true,
+                    type: true,
+                    status: true,
+                    homeScore: true,
+                    awayScore: true,
+
+                    homeTeamSeason: {
+                        select: {
+                            id: true,
+                            name: true,
+
+                            fantasyTeam: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                },
+                            },
+
+                            manager: {
+                                select: {
+                                    id: true,
+                                    username: true,
+                                },
+                            },
+                        },
+                    },
+
+                    awayTeamSeason: {
+                        select: {
+                            id: true,
+                            name: true,
+
+                            fantasyTeam: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                },
+                            },
+
+                            manager: {
+                                select: {
+                                    id: true,
+                                    username: true,
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: {
+                    id: "asc",
+                },
+            });
+
+            const items = matchups.map((matchup) => ({
+                id: matchup.id,
+                week: matchup.week,
+                type: matchup.type,
+                status: matchup.status,
+
+                homeTeam: {
+                    teamSeasonId: matchup.homeTeamSeason.id,
+                    fantasyTeamId: matchup.homeTeamSeason.fantasyTeam.id,
+                    teamName: matchup.homeTeamSeason.name,
+                    manager: matchup.homeTeamSeason.manager,
+                    score: matchup.homeScore === null 
+                        ? null
+                        : Number(matchup.homeScore),
+                },
+
+                awayTeam: {
+                    teamSeasonId: matchup.awayTeamSeason.id,
+                    fantasyTeamId: matchup.awayTeamSeason.fantasyTeam.id,
+                    teamName: matchup.awayTeamSeason.name,
+                    manager: matchup.awayTeamSeason.manager,
+                    score: matchup.awayScore === null 
+                        ? null
+                        : Number(matchup.awayScore),
+                },
+            }));
+
+            res.json({
+                league: {
+                    id: league.id,
+                    name: league.name,
+                },
+
+                leagueSeason: {
+                    id: leagueSeason.id,
+                    season: leagueSeason.season,
+                },
+                week,
+
+                items,
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
 // Returns all rosters with players for the league
 leagueRouter.get("/:leagueId/rosters", async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -260,7 +423,10 @@ leagueRouter.get("/:leagueId/rosters", async (req: Request, res: Response, next:
 
         res.json({
             leagueId,
-            leagueSeasonId: leagueSeason,
+            leagueSeasonId: {
+                id: leagueSeason.id,
+                season: leagueSeason.season,
+            },
             items: slots,
         });
     } catch (err) {

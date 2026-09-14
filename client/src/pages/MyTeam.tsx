@@ -3,6 +3,7 @@ import "./myTeam.css";
 import { useParams } from "react-router-dom";
 import type { MyTeamApiResponse, RosterSlot } from "../lib/api";
 import { getMyTeam, moveRosterSlot } from "../lib/api";
+import { CURRENT_FANTASY_SEASON } from "../config/fantasy";
 
 function isGameLocked(kickoffIso?: string | null) {
     if (!kickoffIso) return false;
@@ -60,7 +61,7 @@ export default function MyTeamPage() {
             try {
                 setLoading(true);
                 setError(null);
-                const json = await getMyTeam({ leagueId, teamId });
+                const json = await getMyTeam({ leagueId, teamId, season: CURRENT_FANTASY_SEASON });
                 if (!isCancelled) setData(json);
             } catch (err: any) {
                 if (!isCancelled) {
