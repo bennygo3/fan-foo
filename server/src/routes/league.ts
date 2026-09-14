@@ -340,6 +340,291 @@ leagueRouter.get(
     }
 );
 
+// GET /:leagueId/standings
+// Returns season standings plus each team's matchup for the requested week
+leagueRouter.get(
+    "/:leagueId/standings",
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const leagueId = parsePositiveInteger(req.params.leagueId);
+
+            if (leagueId === null) {
+                return res.status(400).json({
+                    error: "Invalid leagueId",
+                });
+            }
+
+            const requestedSeason = readOptionalSeason(req);
+
+            if (requestedSeason === null) {
+                return res.status(400).json({
+                    error: "Invalid season",
+                });
+            }
+
+            const week = parsePositiveInteger(req.query.week);
+
+            if (week === null) {
+                return res.status(400).json({
+                    error: "Invalid or missing week ",
+                });
+            }
+
+            const league = await prisma.league.findUnique({
+                where: {
+                    id: leagueId,
+                },
+            });
+
+            if (!league) {
+                return res.status(404).json({
+                    error: "League not found",
+                });
+            }
+
+            const leagueSeason = await findLeagueSeason(
+                leagueId,
+                requestedSeason
+            );
+
+            if (!leagueSeason) {
+                return res.status(404).json({
+                    error: 
+                        requestedSeason === undefined
+                            ? "No seasons found for this league"
+                            : `League season ${requestedSeason} not found`,
+                });
+            }
+
+            // get all 12 teams for this season
+            const teamSeasons = await prisma.fantasyTeamSeason.findMany({
+                where: {
+                    seasonId: leagueSeason.id,
+                },
+                select: {
+                    id: true,
+                    name: true,
+
+                    fantasyTeam: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+
+                    manager: {
+                        select: {
+                            id: true,
+                            username: true,
+                        },
+                    },
+                },
+            });
+
+            // get reg season matchups thru the requested week
+            // FINAL games affect standings.
+            // the requested week's matchup is also used for currentMatchup
+            const matchups = await prisma.fantasyMatchup.findMany({
+                where: {
+                    seasonId: leagueSeason.id,
+                    type: "REGULAR_SEASON",
+                    week: {
+                        lte: week,
+                    },
+                },
+                orderBy: [
+                    {
+                        week: "asc",
+                    },
+                    {
+                        id: "asc",
+                    },
+                ],
+            });
+
+            type StandingRow = {
+                teamSeasonId: number;
+                fantasyTeamId: number;
+                teamName: string;
+                manager: {
+                    id: number;
+                    username: string;
+                } | null;
+
+                wins: number;
+                losses: number;
+
+                pointsFor: number,
+                pointsAgainst: number;
+
+                currentMatchup: {
+                    matchupId: number;
+                    opponentTeamSeasonId: number;
+                    opponentFantasyTeamId: number;
+                    opponentTeamName: string;
+                    opponentManager: {
+                        id: number;
+                        username: string;
+                    } | null;
+                    teamScore: number | null;
+                    opponentScore: number | null;
+                    status: string;
+                } | null;
+            };
+
+            // create one empty standings row per team
+            const standingsByTeamSeasonId = new Map<number, StandingRow>();
+
+            for (const teamSeason of teamSeasons) {
+                standingsByTeamSeasonId.set(teamSeason.id, {
+                    teamSeasonId: teamSeason.id,
+                    fantasyTeamId: teamSeason.fantasyTeam.id,
+                    teamName: teamSeason.name,
+                    manager: teamSeason.manager,
+
+                    wins: 0,
+                    losses: 0,
+
+                    pointsFor: 0,
+                    pointsAgainst: 0,
+
+                    currentMatchup: null,
+                });
+            }
+
+            // Loop thru the matchups and calculate standings
+            for (const matchup of matchups) {
+                const homeStanding = standingsByTeamSeasonId.get(
+                    matchup.homeTeamSeasonId
+                );
+
+                const awayStanding = standingsByTeamSeasonId.get(
+                    matchup.awayTeamSeasonId
+                );
+
+                if (!homeStanding || !awayStanding) {
+                    throw new Error(
+                        `Can't find standings row for matchup ${matchup.id}`
+                    );
+                }
+
+                // only completed games affect w-l and pf,pa
+                if (
+                    matchup.status === "FINAL" &&
+                    matchup.homeScore !== null &&
+                    matchup.awayScore !== null
+                ) {
+                    const homeScore = Number(matchup.homeScore);
+                    const awayScore = Number(matchup.awayScore);
+
+                    homeStanding.pointsFor += homeScore;
+                    homeStanding.pointsAgainst += awayScore;
+
+                    awayStanding.pointsFor += awayScore;
+                    awayStanding.pointsAgainst += homeScore;
+
+                    if (homeScore > awayScore) {
+                        homeStanding.wins++;
+                        awayStanding.losses++;
+                    } else if (awayScore > homeScore) {
+                        awayStanding.wins++;
+                        homeStanding.losses++;
+                    }
+                }
+
+                // the requested week's game becomes currentMatchup
+                // this works whether the matchup is:
+                // SCHEDULE || IN_PROGRESS || FINAL
+                if (matchup.week === week) {
+                    homeStanding.currentMatchup = {
+                        matchupId: matchup.id,
+                        opponentTeamSeasonId: awayStanding.teamSeasonId,
+                        opponentFantasyTeamId: awayStanding.fantasyTeamId,
+                        opponentTeamName: awayStanding.teamName,
+                        opponentManager: awayStanding.manager,
+                        teamScore: matchup.homeScore === null
+                            ? null
+                            : Number(matchup.homeScore),
+                        opponentScore: matchup.awayScore === null
+                            ? null 
+                            : Number(matchup.awayScore),
+
+                        status: matchup.status,
+                    };
+
+                    awayStanding.currentMatchup = {
+                        matchupId: matchup.id,
+                        opponentTeamSeasonId: homeStanding.teamSeasonId,
+                        opponentFantasyTeamId: homeStanding.fantasyTeamId,
+                        opponentTeamName: homeStanding.teamName,
+                        opponentManager: homeStanding.manager,
+                        teamScore: matchup.awayScore === null
+                            ? null
+                            : Number(matchup.awayScore),
+                        opponentScore: matchup.homeScore === null
+                            ? null 
+                            : Number(matchup.homeScore),
+
+                        status: matchup.status,
+                    };
+
+                }
+            }
+
+            const items = Array.from(
+                standingsByTeamSeasonId.values()
+            ).map((standing) => ({
+                ...standing,
+
+                // prevent weird floating-point output such as:
+                // 127.420000000000002.
+                pointsFor: Number(
+                    standing.pointsFor.toFixed(2)
+                ),
+
+                pointsAgainst: Number(
+                    standing.pointsAgainst.toFixed(2)
+                ),
+            })).sort((a, b) => {
+                // First: most wins
+                if (b.wins !== a.wins) {
+                    return b.wins - a.wins;
+                }
+
+                // fewest losses
+                if (a.losses !== b.losses) {
+                    return a.losses - b.losses;
+                }
+
+                // most points scored sort
+                if (b.pointsFor !== a.pointsFor) {
+                    return b.pointsFor - a.pointsFor
+                }
+
+                // final fallback: team name
+                return a.teamName.localeCompare(b.teamName);
+            });
+
+            res.json({
+                league: {
+                    id: league.id,
+                    name: league.name,
+                },
+
+                leagueSeason: {
+                    id: leagueSeason.id,
+                    season: leagueSeason.season,
+                },
+
+                week,
+                items,
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
 // Returns all rosters with players for the league
 leagueRouter.get("/:leagueId/rosters", async (req: Request, res: Response, next: NextFunction) => {
     try {

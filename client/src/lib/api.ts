@@ -93,6 +93,53 @@ export type MyTeamApiResponse = {
     };
 };
 
+export type StandingsManager = {
+    id: number;
+    username: string;
+};
+
+export type CurrentFantasyMatchup = {
+    matchupId: number;
+    opponentTeamSeasonId: number;
+    opponentFantasyTeamId: number;
+    opponentTeamName: string;
+    opponentManager: StandingsManager | null;
+    teamScore:number | null;
+    opponentScore: number | null;
+    status: "SCHEDULED" | "IN_PROGRESS" | "FINAL";
+};
+
+export type Standing = {
+    teamSeasonId: number;
+    fantasyTeamId: number;
+    teamName: string;
+    manager: StandingsManager | null;
+
+    wins: number;
+    losses: number;
+
+    pointsFor: number;
+    pointsAgainst: number;
+
+    currentMatchup: CurrentFantasyMatchup | null;
+};
+
+export type StandingsResponse = {
+    league: {
+        id: number;
+        name: string;
+    };
+
+    leagueSeason: {
+        id: number;
+        season: number;
+    };
+
+    week: number;
+
+    items: Standing[];
+}
+
 export async function getMyTeam(opts: {
     leagueId: number | string;
     teamId: number | string;
@@ -173,6 +220,40 @@ export async function getPlayerPool(opts: {
     }
 
     return (await res.json()) as Paginated<Player>;
+}
+
+export async function getStandings(opts: {
+    leagueId: number | string;
+    season?: number | string;
+    week: number | string;
+}): Promise<StandingsResponse> {
+    const url = new URL(
+        `${API_BASE_URL}/leagues/${opts.leagueId}/standings`
+    );
+
+    if (opts.season !== undefined && opts.season !== "") {
+        url.searchParams.set(
+            "season",
+            String(opts.season)
+        );
+    }
+
+    url.searchParams.set(
+        "week",
+        String(opts.week)
+    );
+
+    const response = await fetch(
+        url.toString(),
+        {
+            credentials: "include",
+        }
+    );
+
+    return readApiResponse<StandingsResponse>(
+        response,
+        "Get standings"
+    );
 }
 
 export async function moveRosterSlot(opts: {
