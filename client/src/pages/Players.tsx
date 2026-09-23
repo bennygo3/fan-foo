@@ -24,17 +24,20 @@ export default function Players() {
     const limit = 50;
     const debouncedSearch = useDebounced(search, 300);  // prevents creating a unique cache entry per keystroke
 
-    const { data, isLoading, isError, error, isFetching, refetch } = useNFLPlayers({
-        season: CURRENT_FANTASY_SEASON,
-        week,
-        search: debouncedSearch,
-        position,
-        page,
-        limit,
-        sort: "proj",
-        leagueId: DEFAULT_LEAGUE_ID,
-        staleTime: 60 * 60 * 1000, // 1h cache while building
-    });
+    const { data, isLoading, isError, error, isFetching, refetch } =
+        useNFLPlayers({
+            season: CURRENT_FANTASY_SEASON,
+            week,
+            search: debouncedSearch,
+            position,
+            freeAgents: true,
+            page,
+            limit,
+            sort: "proj",
+            leagueId: DEFAULT_LEAGUE_ID,
+            staleTime: 60 * 60 * 1000, // 1h cache while building
+        })
+    ;
 
     const items = data?.items ?? [];
     const total = data?.total ?? items.length;
@@ -45,7 +48,7 @@ export default function Players() {
     const headerNote = useMemo(() => (isFetching ? "(refreshing...)" : ""), [isFetching]);
 
     // Load nfl teams once so logos can be used for d/st
-        useEffect(() => {
+    useEffect(() => {
         (async () => {
             try {
                 const resp = await getNflTeams();
@@ -73,7 +76,7 @@ export default function Players() {
                     const home = g.homeTeam.abbr.toUpperCase();
                     const away = g.awayTeam.abbr.toUpperCase();
                     const kickoffIso = g.startTime ?? null;
-                    
+
                     m.set(home, { isHome: true, oppAbbr: away, kickoffIso });
                     m.set(away, { isHome: false, oppAbbr: home, kickoffIso });
                 }
