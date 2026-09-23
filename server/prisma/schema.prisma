@@ -66,8 +66,9 @@ model LeagueSeason {
 
   draft Draft?
 
-  teams    FantasyTeamSeason[]
-  matchups FantasyMatchup[]
+  teams              FantasyTeamSeason[]
+  rosterTransactions RosterTransaction[]
+  matchups           FantasyMatchup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -105,6 +106,9 @@ model FantasyTeamSeason {
 
   draftParticipants DraftParticipant[]
   draftPicks        DraftPick[]
+
+  transactionsFrom RosterTransactionItem[] @relation("RosterTransactionFromTeam")
+  transactionTo    RosterTransactionItem[] @relation("RosterTransactionToTeam")
 
   homeMatchups FantasyMatchup[] @relation("HomeFantasyTeamSeason")
   awayMatchups FantasyMatchup[] @relation("AwayFantasyTeamSeason")
@@ -228,6 +232,48 @@ model RosterSlot {
   @@index([playerId])
 }
 
+model RosterTransaction {
+  id Int @id @default(autoincrement())
+
+  leagueSeasonId Int
+  leagueSeason   LeagueSeason @relation(fields: [leagueSeasonId], references: [id], onDelete: Cascade)
+
+  type RosterTransactionType
+  week Int?
+  note String?
+
+  items RosterTransactionItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([leagueSeasonId, createdAt])
+}
+
+model RosterTransactionItem {
+  id Int @id @default(autoincrement())
+
+  rosterTransactionId Int
+  rosterTransaction   RosterTransaction @relation(fields: [rosterTransactionId], references: [id], onDelete: Cascade)
+
+  playerId Int
+  player   Player @relation(fields: [playerId], references: [id])
+
+  fromFantasyTeamSeasonId Int?
+  toFantasyTeamSeasonId   Int?
+
+  fromFantasyTeamSeason FantasyTeamSeason? @relation("RosterTransactionFromTeam", fields: [fromFantasyTeamSeasonId], references: [id], onDelete: SetNull)
+
+  toFantasyTeamSeason FantasyTeamSeason? @relation("RosterTransactionToTeam", fields: [toFantasyTeamSeasonId], references: [id], onDelete: SetNull)
+
+  fromSlot SlotType?
+  toSlot   SlotType?
+
+  @@unique([rosterTransactionId, playerId])
+  @@index([playerId])
+  @@index([fromFantasyTeamSeasonId])
+  @@index([toFantasyTeamSeasonId])
+}
+
 model Team {
   id               Int      @id @default(autoincrement())
   abbr             String   @unique
@@ -249,12 +295,13 @@ model Player {
   externalId  String? @unique
   externalSrc String?
 
-  draftPicks   DraftPick[]
-  projPts      Float?
-  adp          Float?
-  lastSyncedAt DateTime?
-  isActive     Boolean      @default(true)
-  RosterSlot   RosterSlot[]
+  draftPicks             DraftPick[]
+  projPts                Float?
+  adp                    Float?
+  lastSyncedAt           DateTime?
+  isActive               Boolean                 @default(true)
+  RosterSlot             RosterSlot[]
+  rosterTransactionItems RosterTransactionItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -299,6 +346,13 @@ enum SlotType {
   K
   BN
   IR
+}
+
+enum RosterTransactionType {
+  ADD
+  DROP
+  ADD_DROP
+  TRADE
 }
 
 enum DraftStatus {

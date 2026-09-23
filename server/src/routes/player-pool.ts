@@ -646,7 +646,7 @@ playerPoolRouter.post(
                 },
             });
 
-            if (!fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId ! == leagueId) {
+            if (!fantasyTeamSeason || fantasyTeamSeason.fantasyTeam.leagueId !== leagueId) {
                 return res.status(404).json({
                     error: "Fantasy team was not found in this league's season",
                 });
