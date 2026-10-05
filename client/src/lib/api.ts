@@ -45,8 +45,8 @@ export type SlotType =
 
 export type RosterSlot = {
     id: number;
-    leagueId: number;
-    teamId: number;
+    leagueSeasonId: number;
+    fantasyTeamSeasonId: number;
     slot: SlotType;
     playerId: number | null;
     player?: {
@@ -76,6 +76,7 @@ export type RosterMutationResponse = {
 // My Team types - helper
 export type TeamSummary = {
     id: number;
+    fantasyTeamSeasonId: number,
     name: string;
     league: { id: number; name: string; };
     manager: { id: number; username: string; email: string } | null;
@@ -304,12 +305,23 @@ export async function addPlayerToRoster(opts: {
     leagueId: number;
     teamId: number;
     playerId: number;
+    season: number | string;
+    week?: number | string;
     slot?: SlotType;
 }) {
-    const payload: any = {
-        teamId: opts.teamId,
+    const payload: {
+        playerId: number,
+        season: number | string;
+        week?: number | string;
+        slot?: SlotType;
+    } = {
         playerId: opts.playerId,
+        season: opts.season,
     };
+
+    if (opts.week !== undefined && opts.week !== "") {
+        payload.week = opts.week;
+    }
 
     if (opts.slot) {
         payload.slot = opts.slot;
@@ -339,15 +351,19 @@ export async function dropPlayerFromRoster(opts: {
     leagueId: number;
     teamId: number;
     rosterSlotId: number;
+    season: number | string;
+    week?: number | string;
 }) {
     const res = await fetch(
         `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop`,
         {
             method: "POST",
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", },
             body: JSON.stringify({
                 rosterSlotId: opts.rosterSlotId,
+                season: opts.season,
+                week: opts.week,
             }),
         }
     );

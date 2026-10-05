@@ -26,6 +26,20 @@ function parsePositiveInteger(value: unknown): number | null {
     return parsed;
 }
 
+function parseOptionalPositiveInteger(
+    value: unknown
+) : number | null | undefined {
+    if (value === undefined || value === null || value === "") {
+        return undefined;
+    }
+
+    return parsePositiveInteger(value);
+}
+
+function createHttpError(status: number, message: string) {
+    return Object.assign(new Error(message), { status });
+}
+
 function hasPrismaCode(error: unknown, code: string): boolean {
     if (typeof error !== "object" || error === null) {
         return false;
@@ -436,6 +450,8 @@ playerPoolRouter.post(
             const fantasyTeamId = parsePositiveInteger(req.params.teamId);
             const playerId = parsePositiveInteger(req.body?.playerId);
             const season = parsePositiveInteger(req.body?.season);
+            const week = parseOptionalPositiveInteger(req.body?.week);
+
             const requestedSlot =
                 typeof req.body?.slot === "string"
                     ? (req.body.slot.toUpperCase() as SlotType)
@@ -452,6 +468,12 @@ playerPoolRouter.post(
             if (season === null) {
                 return res.status(400).json({
                     error: "A valid season is required",
+                });
+            }
+
+            if (week === null) {
+                return res.status(400).json({
+                    error: "Invalid week",
                 });
             }
 
@@ -614,6 +636,7 @@ playerPoolRouter.post(
             const fantasyTeamId = parsePositiveInteger(req.params.teamId);
             const rosterSlotId = parsePositiveInteger(req.body?.rosterSlotId);
             const season = parsePositiveInteger(req.body?.season);
+            const week = parseOptionalPositiveInteger(req.body?.week);
 
             if (leagueId === null || fantasyTeamId === null || rosterSlotId === null) {
                 return res.status(400).json({ error: "Invalid leagueId, teamId, or rosterSlotId", });
@@ -622,6 +645,12 @@ playerPoolRouter.post(
             if (season === null) {
                 return res.status(400).json({
                     error: "A valid season is required",
+                });
+            }
+
+            if (week === null) {
+                return res.status(400).json({
+                    error: "Invalid week",
                 });
             }
 

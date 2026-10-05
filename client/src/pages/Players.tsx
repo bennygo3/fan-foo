@@ -94,6 +94,11 @@ export default function Players() {
                 leagueId: DEFAULT_LEAGUE_ID,
                 teamId: TEAM_ID,
                 playerId,
+                season: CURRENT_FANTASY_SEASON,
+                week: 
+                    week !== ""
+                        ? week
+                        : serverWeek,
             });
             refetch();
         } catch (e) {
@@ -254,29 +259,6 @@ export default function Players() {
                                     oppLine1 = "-";
                                 }
                             }
-
-                            // const venue = p.teamAbv ? venueByTeam.get(p.teamAbv.toUpperCase()) : undefined;
-                            // const atVs = venue ? (venue.isHome ? "vs" : "@") : "vs";
-
-                            // let oppLine1 = "-";
-                            // let oppLine2 = "";
-
-                            // if (isBye) {
-                            //     oppLine1 = "BYE";
-                            // } else if (p.oppAbv && p.kickoffIso) {
-                            //     const d = new Date(p.kickoffIso);
-
-                            //     oppLine1 = `${atVs} ${p.oppAbv} • ${d.toLocaleDateString(undefined, {
-                            //         weekday: "short",
-                            //         month: "short",
-                            //         day: "numeric",
-                            //     })}`;
-
-                            //     oppLine2 = d.toLocaleTimeString(undefined, {
-                            //         hour: "numeric",
-                            //         minute: "2-digit"
-                            //     });
-                            // }
 
                             return (
                                 <li key={p.id} className={styles.row}>
