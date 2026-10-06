@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./myTeam.css";
 import { useParams } from "react-router-dom";
 import type { MyTeamApiResponse, RosterSlot } from "../lib/api";
-import { getMyTeam, moveRosterSlot } from "../lib/api";
+import { dropPlayerFromRoster, getMyTeam, moveRosterSlot } from "../lib/api";
 import { CURRENT_FANTASY_SEASON } from "../config/fantasy";
 
 function isGameLocked(kickoffIso?: string | null) {
@@ -41,6 +41,9 @@ export default function MyTeamPage() {
     const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
     const [moving, setMoving] = useState(false);
+    const [droppingSlotId, setDroppingSlotId] = useState<number | null>(null);
+
+    const rosterBusy = moving || droppingSlotId !== null;
 
     async function refreshLineup() {
         if (!data) return;
@@ -91,8 +94,60 @@ export default function MyTeamPage() {
         return m;
     }, [allSlots]);
 
+    async function onDropSlot(slot: RosterSlot) {
+        setMoveError(null);
+
+        if (!data || !slot.playerId || !slot.player) {
+            return;
+        }
+
+        if (rosterBusy) {
+            return;
+        }
+
+        if (isGameLocked(slot.kickoffIso)) {
+            setMoveError(
+                `${slot.player.name} cannot be dropped because the game has started`
+            );
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Drop ${slot.player.name} from ${data.team.name}?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setDroppingSlotId(slot.id);
+            setSelectedSlotId(null);
+
+            await dropPlayerFromRoster({
+                leagueId,
+                teamId,
+                rosterSlotId: slot.id,
+                season: data.season,
+                week: data.week,
+            });
+
+            await refreshLineup();
+        } catch (error) {
+            setMoveError(
+                error instanceof Error
+                    ? error.message
+                    : "Player could not be dropped"
+            );
+        } finally {
+            setDroppingSlotId(null);
+        }
+    }
+
     async function onClickSlot(slot: RosterSlot) {
         setMoveError(null);
+
+        if (rosterBusy) return;
 
         // 1. no selecttion yet->allow select if this slot has a player and is not locked
         if (selectedSlotId == null) {
@@ -222,6 +277,9 @@ export default function MyTeamPage() {
                     slots={starters}
                     selectedSlotId={selectedSlotId}
                     onClickSlot={onClickSlot}
+                    onDropSlot={onDropSlot}
+                    droppingSlotId={droppingSlotId}
+                    actionsDisabled={rosterBusy}
                     showTotals
                 />
             </section>
@@ -232,6 +290,9 @@ export default function MyTeamPage() {
                     slots={bench} 
                     selectedSlotId={selectedSlotId}
                     onClickSlot={onClickSlot}
+                    onDropSlot={onDropSlot}
+                    droppingSlotId={droppingSlotId}
+                    actionsDisabled={rosterBusy}
                 />
             </section>
 
@@ -241,6 +302,9 @@ export default function MyTeamPage() {
                     slots={ir} 
                     selectedSlotId={selectedSlotId}
                     onClickSlot={onClickSlot}
+                    onDropSlot={onDropSlot}
+                    droppingSlotId={droppingSlotId}
+                    actionsDisabled={rosterBusy}
                 />
             </section>
         </div>
@@ -250,12 +314,18 @@ export default function MyTeamPage() {
 function RosterTable({ 
     slots, 
     selectedSlotId, 
-    onClickSlot, 
+    onClickSlot,
+    onDropSlot,
+    droppingSlotId,
+    actionsDisabled, 
     showTotals, 
 } : { 
     slots: RosterSlot[]; 
     selectedSlotId: number | null;
     onClickSlot: (slot: RosterSlot) => void;
+    onDropSlot: (slot: RosterSlot) => void;
+    droppingSlotId: number | null;
+    actionsDisabled: boolean;
     showTotals?: boolean;
 }) {
     const totalLive = sum(slots.map((s) => s.livePts));
@@ -271,6 +341,7 @@ function RosterTable({
                     <th className="myteam-th">Opp</th>
                     <th className="myteam-th">Status</th>
                     <th className="myteam-th">Projected</th>
+                    <th className="myteam-th">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -280,7 +351,10 @@ function RosterTable({
                         slot={slot} 
                         selected={selectedSlotId === slot.id}
                         locked={isGameLocked(slot.kickoffIso)}
+                        dropping={droppingSlotId === slot.id}
+                        actionsDisabled={actionsDisabled}
                         onClick={() => onClickSlot(slot)}
+                        onDrop={() => onDropSlot(slot)}
                     />
                 ))}
 
@@ -293,6 +367,7 @@ function RosterTable({
                         <td className="myteam-td" style={{ fontWeight: 700 }}>
                             {Number.isFinite(totalLive) ? totalLive.toFixed(1) : "-"}
                         </td>
+                        <td className="myteam-td" />
                         <td className="myteam-td" />
                         <td className="myteam-td" />
                         <td className="myteam-td" style={{ fontWeight: 700 }}>
@@ -310,12 +385,18 @@ function RosterRow({
     slot,
     selected,
     locked,
+    dropping,
+    actionsDisabled,
     onClick,
+    onDrop,
 }: { 
     slot: RosterSlot ;
     selected: boolean;
     locked: boolean;
+    dropping: boolean;
+    actionsDisabled: boolean;
     onClick: () => void;
+    onDrop: () => void;
 }) {
     const p = slot.player;
     const hasPlayer = !!p;
@@ -395,6 +476,21 @@ function RosterRow({
             <td className="myteam-td">{hasPlayer ? opponentDisplay : "-"}</td>
             <td className="myteam-td">{hasPlayer ? statusDisplay : "-"}</td>
             <td className="myteam-td">{hasPlayer ? projDisplay : "-"}</td>
+            <td className="myteam-td">
+                {hasPlayer ? (
+                    <button 
+                        type="button"
+                        className="myteam-drop-button"
+                        disabled={locked || actionsDisabled}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onDrop();
+                        }}
+                    >
+                        {dropping ? "Dropping..." : "Drop"}
+                    </button>
+                ) : null}
+            </td>
 
         </tr>
     );

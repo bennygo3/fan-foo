@@ -347,13 +347,26 @@ export async function addPlayerToRoster(opts: {
     return (await res.json()) as RosterMutationResponse;
 }
 
+export type DropPlayerResponse = {
+    message: string;
+    leagueSeasonId: number;
+    season: number;
+    transactionId: number;
+    droppedPlayer: {
+        id: number;
+        name: string;
+        position: string;
+    };
+    slot: RosterSlot;
+};
+
 export async function dropPlayerFromRoster(opts: {
     leagueId: number;
     teamId: number;
     rosterSlotId: number;
     season: number | string;
     week?: number | string;
-}) {
+}): Promise<DropPlayerResponse> {
     const res = await fetch(
         `${API_BASE_URL}/leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop`,
         {
@@ -371,11 +384,11 @@ export async function dropPlayerFromRoster(opts: {
     if (!res.ok) {
         const text = await res.text();
         throw new Error(
-            `POST /leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop failed ${text}`
+            `POST /leagues/${opts.leagueId}/teams/${opts.teamId}/roster/drop failed: ${res.status} ${text}`
         );
     }
 
-    return (await res.json()) as RosterMutationResponse;
+    return (await res.json()) as DropPlayerResponse;
 }
 
 export type DSTProjections = {
