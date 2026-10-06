@@ -28,7 +28,7 @@ function parsePositiveInteger(value: unknown): number | null {
 
 function parseOptionalPositiveInteger(
     value: unknown
-) : number | null | undefined {
+): number | null | undefined {
     if (value === undefined || value === null || value === "") {
         return undefined;
     }
@@ -510,8 +510,15 @@ playerPoolRouter.post(
                 where: { id: playerId },
                 include: { team: true }, // nfl team
             });
+
             if (!player) {
                 return res.status(404).json({ error: "Player not found" });
+            }
+
+            if (!player.isActive) {
+                return res.status(409).json({
+                    error: `${player.name} is not active in the current player pool`,
+                });
             }
 
             // make sure player isn't on another manager's team
@@ -560,7 +567,7 @@ playerPoolRouter.post(
                 if (emptySlot) {
                     emptySlotId = emptySlot.id;
                     break;
-                } 
+                }
             }
 
             if (emptySlotId === null) {
@@ -570,52 +577,94 @@ playerPoolRouter.post(
                 });
             }
 
-            const claimedSlot =
-                await prisma.rosterSlot.updateMany({
-                    where: {
-                        id: emptySlotId,
-                        leagueSeasonId: leagueSeason.id,
-                        fantasyTeamSeasonId: fantasyTeamSeason.id,
-                        playerId: null,
-                    },
-                    data: {
-                        playerId,
-                    },
-                });
+            const slotId = emptySlotId;
+
+            const result = await prisma.$transaction(async (transaction) => {
+                const claimedSlot =
+                    await transaction.rosterSlot.updateMany({
+                        where: {
+                            id: slotId,
+                            leagueSeasonId: leagueSeason.id,
+                            fantasyTeamSeasonId: fantasyTeamSeason.id,
+                            playerId: null,
+                        },
+                        data: {
+                            playerId,
+                        },
+                    });
 
                 if (claimedSlot.count !== 1) {
-                    return res.status(409).json({
-                        error: "Roster changed before the player could be added. Try again.",
-                    });
+                    throw createHttpError(
+                        409,
+                        "Roster changed before the player could be added. Try again."
+                    );
                 }
 
-            // Finally fill the slot
-            const updatedSlot = await prisma.rosterSlot.findUnique({
-                where: { id: emptySlotId, },
-                include: {
-                    player: {
-                        include: { team: true, }, // nfl team
-                    },
-                    fantasyTeamSeason: {
-                        select: {
-                            id: true,
-                            name: true,
-                            manager: {
+                const updatedSlot =
+                    await transaction.rosterSlot.findUnique({
+                        where: {
+                            id: slotId,
+                        },
+                        include: {
+                            player: {
+                                include: {
+                                    team: true,
+                                },
+                            },
+                            fantasyTeamSeason: {
                                 select: {
                                     id: true,
-                                    username: true,
+                                    name: true,
+                                    manager: {
+                                        select: {
+                                            id: true,
+                                            username: true,
+                                        },
+                                    },
                                 },
                             },
                         },
-                    },
-                },
+                    });
+
+                if (!updatedSlot) {
+                    throw createHttpError(
+                        500,
+                        "Roster slot disappeared while adding the player"
+                    );
+                }
+
+                const rosterTransaction =
+                    await transaction.rosterTransaction.create({
+                        data: {
+                            leagueSeasonId: leagueSeason.id,
+                            type: "ADD",
+                            week: week ?? null,
+                            items: {
+                                create: {
+                                    playerId,
+                                    toFantasyTeamSeasonId:
+                                        fantasyTeamSeason.id,
+                                    toSlot: updatedSlot.slot,
+                                },
+                            },
+                        },
+                        select: {
+                            id: true,
+                        },
+                    });
+
+                return {
+                    updatedSlot,
+                    transactionId: rosterTransaction.id,
+                };
             });
 
             res.json({
                 message: "Player added to roster",
                 leagueSeasonId: leagueSeason.id,
                 season,
-                slot: updatedSlot,
+                transactionId: result.transactionId,
+                slot: result.updatedSlot,
             });
         } catch (err) {
             if (hasPrismaCode(err, "P2002")) {
@@ -623,6 +672,7 @@ playerPoolRouter.post(
                     error: "Player was added to another roster first",
                 });
             }
+            
             next(err);
         }
     }
@@ -682,33 +732,137 @@ playerPoolRouter.post(
             }
 
             // slot belongs to this team
-            const slot = await prisma.rosterSlot.findFirst({
-                where: { 
-                    id: rosterSlotId, 
+            // const slot = await prisma.rosterSlot.findFirst({
+            //     where: {
+            //         id: rosterSlotId,
+            //         leagueSeasonId: leagueSeason.id,
+            //         fantasyTeamSeasonId: fantasyTeamSeason.id,
+            //     },
+            // });
+
+            // if (!slot) {
+            //     return res.status(404).json({ error: "Roster slot not found" })
+            // }
+
+            // if (slot.playerId == null) {
+            //     return res.status(400).json({ error: "Roster slot already empty " });
+            // }
+
+            // const updatedSlot = await prisma.rosterSlot.update({
+            //     where: { id: slot.id },
+            //     data: { playerId: null },
+            // });
+
+            // res.json({
+            //     message: "Player dropped",
+            //     leagueSeasonId: leagueSeason.id,
+            //     season,
+            //     slot: updatedSlot,
+            // });
+        const result = await prisma.$transaction(async (transaction) => {
+            const slot = await transaction.rosterSlot.findFirst({
+                where: {
+                    id: rosterSlotId,
                     leagueSeasonId: leagueSeason.id,
-                    fantasyTeamSeasonId: fantasyTeamSeason.id, 
+                    fantasyTeamSeasonId: fantasyTeamSeason.id,
+                },
+                include: {
+                    player: {
+                        select: {
+                            id: true,
+                            name: true,
+                            position: true,
+                        },
+                    },
                 },
             });
 
             if (!slot) {
-                return res.status(404).json({ error: "Roster slot not found" })
+                throw createHttpError(
+                    404,
+                    "Roster slot not found"
+                );
             }
 
-            if (slot.playerId == null) {
-                return res.status(400).json({ error: "Roster slot already empty " });
+            if (slot.playerId === null || !slot.player) {
+                throw createHttpError(
+                    409,
+                    "Roster slot is already empty"
+                );
             }
 
-            const updatedSlot = await prisma.rosterSlot.update({
-                where: { id: slot.id },
-                data: { playerId: null },
-            });
+            const playerId = slot.playerId;
 
-            res.json({
-                message: "Player dropped",
-                leagueSeasonId: leagueSeason.id,
-                season,
-                slot: updatedSlot,
-            });
+            const clearedSlot =
+                await transaction.rosterSlot.updateMany({
+                    where: {
+                        id: slot.id,
+                        leagueSeasonId: leagueSeason.id,
+                        fantasyTeamSeasonId: fantasyTeamSeason.id,
+                        playerId,
+                    },
+                    data: {
+                        playerId: null,
+                    },
+                });
+            
+            // throwing below causes the database transaction to roll back. the update is performed only if the state is still what it was
+            if (clearedSlot.count !== 1) {
+                throw createHttpError(
+                    409,
+                    "Roster changed before the player could be dropped. Try again."
+                );
+            }
+
+            // parent record. "a drop occurred in this league season during this week."
+            const rosterTransaction =
+                await transaction.rosterTransaction.create({
+                    data: {
+                        leagueSeasonId: leagueSeason.id,
+                        type: "DROP",
+                        week: week ?? null,
+                        items: { // child record. describes player movement. eg: manager name -> free agency/ BN -> no roster slot
+                            create: {
+                                playerId,
+                                fromFantasyTeamSeasonId: fantasyTeamSeason.id,
+                                fromSlot: slot.slot,
+                            },
+                        },
+                    },
+                    select: {
+                        id: true,
+                    },
+                });
+            
+            const updatedSlot =
+                await transaction.rosterSlot.findUnique({
+                    where: {
+                        id: slot.id,
+                    },
+                });
+
+            if (!updatedSlot) {
+                throw createHttpError(
+                    500,
+                    "Roster slot disappeared while dropping the player"
+                );
+            }
+
+            return {
+                updatedSlot,
+                droppedPlayer: slot.player,
+                transactionId: rosterTransaction.id,
+            };
+        });
+
+        res.json({
+            message: "Player dropped",
+            leagueSeasonId: leagueSeason.id,
+            season,
+            transactionId: result.transactionId,
+            droppedPlayer: result.droppedPlayer,
+            slot: result.updatedSlot,
+        });
         } catch (err) {
             next(err);
         }
