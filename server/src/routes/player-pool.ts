@@ -78,7 +78,7 @@ playerPoolRouter.get(
             const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
             const position = typeof req.query.position === "string" ? req.query.position.trim().toUpperCase() : undefined;
             const teamAbv = typeof req.query.teamAbv === "string" ? req.query.teamAbv.trim().toUpperCase() : undefined;
-
+            const freeAgentsOnly = req.query.freeAgents === "true";
             const requestedSeason = req.query.season === undefined ? undefined : parsePositiveInteger(req.query.season);
             const requestedWeek = req.query.week === undefined ? undefined : parsePositiveInteger(req.query.week);
 
@@ -187,24 +187,21 @@ playerPoolRouter.get(
                 });
             }
 
+            if (freeAgentsOnly) {
+                and.push({
+                    RosterSlot: {
+                        none: {
+                            leagueSeasonId: leagueSeason.id,
+                        },
+                    },
+                });
+            }
+
             const where: Prisma.PlayerWhereInput =
                 and.length > 0
                     ? { AND: and }
                     : {}
                 ;
-
-            // type PlayerWithAtts = Prisma.PlayerGetPayload<{
-            //     include: {
-            //         team: true;
-            //         RosterSlot: {
-            //             include: {
-            //                 team: {
-            //                     include: { manager: true };
-            //                 };
-            //             };
-            //         };
-            //     };
-            // }>;
 
             const players = await prisma.player.findMany({
                 where,
@@ -331,29 +328,12 @@ playerPoolRouter.get(
 
                     projPts = dstProj?.projPts ?? player.projPts ?? null;
 
-                    // if (idx < 5) {
-                    //     console.log("[D/ST debug]", {
-                    //         dbId: p.id,
-                    //         teamAbv,
-                    //         hasDstProj: teamAbv ? dstProjMap.has(teamAbv.toUpperCase()) : false,
-                    //         dstProj,
-                    //     });
-                    // }
                 } else {
                     // Offensive player 🏈 projections come from playerProjections
                     const playerProj = player.externalId ? projMap.get(player.externalId) : undefined;
 
                     projPts = playerProj?.projPts ?? player.projPts ?? null;
 
-                    // if (idx < 5) {
-                    //     console.log("[player-pool] join debug", {
-                    //         dbId: p.id,
-                    //         name: p.name,
-                    //         externalId: p.externalId,
-                    //         hasProj: p.externalId ? projMap.has(p.externalId) : false,
-                    //         proj,
-                    //     });
-                    // }
                 }
 
                 return {
@@ -731,34 +711,6 @@ playerPoolRouter.post(
                 });
             }
 
-            // slot belongs to this team
-            // const slot = await prisma.rosterSlot.findFirst({
-            //     where: {
-            //         id: rosterSlotId,
-            //         leagueSeasonId: leagueSeason.id,
-            //         fantasyTeamSeasonId: fantasyTeamSeason.id,
-            //     },
-            // });
-
-            // if (!slot) {
-            //     return res.status(404).json({ error: "Roster slot not found" })
-            // }
-
-            // if (slot.playerId == null) {
-            //     return res.status(400).json({ error: "Roster slot already empty " });
-            // }
-
-            // const updatedSlot = await prisma.rosterSlot.update({
-            //     where: { id: slot.id },
-            //     data: { playerId: null },
-            // });
-
-            // res.json({
-            //     message: "Player dropped",
-            //     leagueSeasonId: leagueSeason.id,
-            //     season,
-            //     slot: updatedSlot,
-            // });
         const result = await prisma.$transaction(async (transaction) => {
             const slot = await transaction.rosterSlot.findFirst({
                 where: {
