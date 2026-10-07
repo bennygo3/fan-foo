@@ -11,7 +11,10 @@ const TEAM_ID = 6; // TODO: make dynamic
 const POSITIONS = ["QB", "RB", "WR", "TE", "DST", "K"];
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
+type PlayerPoolView = "free-agents" | "all";
+
 export default function Players() {
+    const [poolView, setPoolView] = useState<PlayerPoolView>("free-agents");
     const [search, setSearch] = useState("");
     const [position, setPosition] = useState("");
     const [byAbbr, setByAbbr] = useState<Map<string, NflTeam>>(new Map());
@@ -30,7 +33,7 @@ export default function Players() {
             week,
             search: debouncedSearch,
             position,
-            freeAgents: true,
+            freeAgents: poolView === "free-agents",
             page,
             limit,
             sort: "proj",
@@ -161,6 +164,41 @@ export default function Players() {
                             <option key={w} value={w}>{`Week ${w}`}</option>
                         ))}
                     </select>
+
+                    <div className={styles.poolToggle} role="group" aria-label="Player pool toggle">
+                        <button 
+                            type="button" 
+                            className={ 
+                                poolView === "free-agents" 
+                                ? styles.poolToggleActive 
+                                : styles.poolToggleButton 
+                            }
+                            aria-pressed={poolView === "free-agents"}
+                            onClick={() => {
+                                setPoolView("free-agents");
+                                setPage(1);
+                            }}
+                        >
+                            Free Agents
+                        </button>
+
+                        <button 
+                            type="button"
+                            className={
+                                poolView === "all"
+                                    ? styles.poolToggleActive
+                                    : styles.poolToggleButton
+                            }
+                            aria-pressed={poolView === "all"}
+                            onClick={() => {
+                                setPoolView("all");
+                                setPage(1);
+                            }}
+                        >
+                            All Players
+                        </button>
+                    </div>
+        
 
                     <button onClick={() => refetch()} disabled={isFetching} className={styles.playersSearchButton}>
                         {isFetching ? "Play call incoming..." : "Search"}

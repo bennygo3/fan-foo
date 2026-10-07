@@ -83,6 +83,34 @@ display: grid;
     color: var(--text);
 }
 
+.poolToggle {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid rgb(83, 96, 121);
+    border-radius: 9px;
+    background: rgb(17, 19, 24);
+}
+
+.poolToggleButton,
+.poolToggleActive {
+    border: 0;
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    color: rgb(174, 182, 199);
+    background: transparent;
+    cursor: pointer;
+}
+
+.poolToggleActive {
+    color: rgb(255, 255, 255);
+    background: rgb(61, 73, 96);
+}
+
+.poolToggleButton:hover {
+    color: rgb(255, 255, 255);
+    background: rgb(37, 43, 55);
+}
+
 .playersSearchButton {
     border-radius: 10px;
     padding: 8px 10px;
