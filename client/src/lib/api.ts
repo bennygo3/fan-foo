@@ -452,12 +452,38 @@ export type Game = {
     awayTeam: { abbr: string };
 }
 
-export async function getSchedule(params: { week?: number | string }) {
+export async function getSchedule(params: { 
+    season: number | string;
+    week?: number | string; 
+}) {
     const url = new URL(`${API_BASE_URL}/nfl/schedule`);
-    if (params.week !== undefined && params.week !== "") url.searchParams.set("week", String(params.week));
 
-    const res = await fetch(url.toString(), { credentials: "include" });
-    if (!res.ok) throw new Error(`GET /nfl/schedule failed: ${res.status} ${await res.text()}`);
+    url.searchParams.set(
+        "season",
+        String(params.season)
+    );
+
+    if (
+        params.week !== undefined && 
+        params.week !== ""
+    ) {
+        url.searchParams.set(
+            "week",
+            String(params.week)
+        );
+    }  
+
+    const res = await fetch(url.toString(), { 
+        credentials: "include", 
+    });
+    
+    if (!res.ok) {
+        throw new Error(
+            `GET /nfl/schedule failed: ` + 
+            `${res.status} ${await res.text()}`
+        );
+    } 
+
     return (await res.json()) as Game[];
 }
 

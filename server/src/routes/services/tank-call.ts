@@ -110,7 +110,7 @@ async function tankHttp<T = any>(opts: HttpOpts): Promise<T> {
     throw lastErr;
 }
 
-export async function tankGetPlayersList(season: string = "2025") {
+export async function tankGetPlayersList(season: string = "2026") {
     return tankHttp<any>({
         url: `https://${RAPID_HOST}/getNFLPlayerList`,
         params: { season },
@@ -118,13 +118,29 @@ export async function tankGetPlayersList(season: string = "2025") {
     });
 }
 
-// toying with using our own seeded schedule to deal with unnecessary ext calls
-export async function tankGetWeeklySchedule(week: string | number, season: string) {
+export async function tankGetWeeklySchedule(
+    week: string | number,
+    season: string
+) {
     return tankHttp<any>({
-        url: `https://${RAPID_HOST}/getWeeklyNFLSchedule`,
-        params: { week: String(week), season },
-        timeoutMs: 10_000,
+        url: `https://${RAPID_HOST}/getNFLGamesForWeek`,
+        params: {
+            week: String(week),
+            season,
+            seasonType: "reg",
+            retries: 0, // prevents a 2nd billable req if Tank returns a rate-limit or server error
+        },
+        timeoutMs: 20_000,
     });
+}
+
+export function tankGetSeasonSchedule(
+    season: string | number
+) {
+    return tankGetWeeklySchedule(
+        "all",
+        String(season)
+    );
 }
 
 export async function tankGetBoxScore(
@@ -177,7 +193,7 @@ export function extractDSTProjections(resp: any): any[] {
 }
 
 // // Heavier call, includes teams + rosters with payload
-export async function tankGetTeamsWithRosters(season = "2025") {
+export async function tankGetTeamsWithRosters(season = "2026") {
     return tankHttp<any>({
         url: `https://${RAPID_HOST}/getNFLTeams`,
         params: {
@@ -191,6 +207,3 @@ export async function tankGetTeamsWithRosters(season = "2025") {
         timeoutMs: 15_000,
     });
 }
-
-
-

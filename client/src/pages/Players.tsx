@@ -65,14 +65,27 @@ export default function Players() {
     }, []);
 
     useEffect(() => {
-        const effectiveWeek =
-            week !== "" && week != null ? Number(week) : Number(serverWeek);
+        const effectiveSeason = Number(
+            serverSeason ?? CURRENT_FANTASY_SEASON
+        );
 
-        if (!Number.isFinite(effectiveWeek) || !effectiveWeek) return;
+        const effectiveWeek =
+            week !== "" && week != null 
+                ? Number(week) 
+                : Number(serverWeek);
+
+        if (
+            !Number.isInteger(effectiveSeason) || 
+            !Number.isInteger(effectiveWeek) ||
+            effectiveWeek < 1 ||
+            effectiveWeek > 18
+        ) {
+            return;
+        }
 
         (async () => {
             try {
-                const games: Game[] = await getSchedule({ week: effectiveWeek });
+                const games: Game[] = await getSchedule({ season: effectiveSeason, week: effectiveWeek });
                 const m = new Map<string, { isHome: boolean; oppAbbr: string; kickoffIso: string | null }>();
 
                 for (const g of games) {
@@ -89,7 +102,7 @@ export default function Players() {
                 setVenueByTeam(new Map());
             }
         })();
-    }, [week, serverWeek]);
+    }, [week, serverWeek, serverSeason,]);
 
     const onAdd = async (playerId: number) => {
         try {
