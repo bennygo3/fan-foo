@@ -1,0 +1,131 @@
+.page {
+    max-width: 1200px;
+    width: 90vw;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+}
+
+.header h1,
+.teamHeading h2 {
+    margin: 0;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: rgb(141, 189, 255);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.summary {
+    margin: 8px 0 0;
+    color: rgb(169, 176, 192);
+}
+
+.teamPicker {
+    display: grid;
+    gap: 8px;
+    min-width: 260px;
+}
+
+.teamPicker label {
+    font-weight: 700;
+}
+
+.teamPicker select {
+    min-height: 44px;
+    padding: 8px 12px;
+    color: inherit;
+    background: rgb(17, 19, 24);
+    border: 1px solid rgb(83, 97, 122);
+    border-radius: 8px;
+}
+
+.teamHeading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.teamHeading img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.teamHeading span,
+.opponent small {
+    color: rgb(169, 176, 192);
+}
+
+.tableWrapper {
+    overflow-x: auto;
+    border: 1px solid rgb(70, 83, 106);
+    border-radius: 12px;
+}
+
+.table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    background: rgb(17, 19, 24);
+}
+
+.table th,
+.table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid rgb(49, 58, 75);
+}
+
+.table thead {
+    background: rgb(35, 40, 52);
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.opponent {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.opponent img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+.byeRow {
+    color: rgb(169, 176, 192);
+    background: rgb(25, 28, 35);
+}
+
+.state {
+    padding: 24px;
+    text-align: center;
+}
+
+@media (max-width: 700px) {
+    .header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .teamPicker {
+        min-width: 0;
+    }
+}

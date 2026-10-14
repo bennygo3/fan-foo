@@ -12,6 +12,7 @@ export default function App() {
         <NavLink to="/players" className={link}>Players</NavLink>
         <NavLink to="/league/1/team/6" className={link}>My Team</NavLink>
         <NavLink to="/scoreboard" className={link}>Scoreboard</NavLink>
+        <NavLink to="/nflschedule" className={link}>NFL Schedule</NavLink>
         <NavLink to="/history" className={link}>Championships</NavLink>
       </header>
       <Outlet />

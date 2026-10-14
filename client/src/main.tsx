@@ -9,6 +9,7 @@ import Home from "./pages/Home.tsx"
 import Players from "./pages/Players.tsx"
 import MyTeamPage from "./pages/MyTeam.tsx"
 import Draft from "./pages/Draft.tsx"
+import NflSchedule from "./pages/NflSchedule.tsx"
 import "./index.css"
 
 const router = createBrowserRouter([
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
             { index: true, element: <Home /> },
             { path: "players", element: <Players /> },
             { path: "league/:leagueId/team/:teamId", element: <MyTeamPage /> },
+            { path: "nflschedule", element: <NflSchedule /> },
             { path: "league/:leagueId/draft", element: <Draft /> },
         ],
     },
