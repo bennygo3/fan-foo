@@ -5,6 +5,7 @@ import {
     type NextFunction 
 } from "express";
 import { prisma } from "../lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 const router = Router();
 
@@ -44,16 +45,74 @@ router.get("/schedule", async (req: Request, res: Response, next: NextFunction) 
             }
         } 
 
+        const rawTeamAbv = req.query.teamAbv;
+
+        let selectedTeam:
+            | {
+                id: number;
+                abbr: string;
+            }
+            | undefined;
+
+        if (rawTeamAbv !== undefined) {
+            if (typeof rawTeamAbv !== "string") {
+                return res.status(400).json({
+                    error: "Invalid team abbreviation",
+                });
+            }
+
+            const teamAbv = rawTeamAbv
+                .trim()
+                .toUpperCase();
+
+            if (!/^[A-Z]{2,3}$/.test(teamAbv)) {
+                return res.status(400).json({
+                    error: "Invalid teamsAbv",
+                });
+            }
+
+            selectedTeam = 
+                (await prisma.team.findUnique({
+                    where: {
+                        abbr: teamAbv,
+                    },
+                    select: {
+                        id: true,
+                        abbr: true,
+                    },
+                })) ?? undefined;
+            
+            if (!selectedTeam) {
+                return res.status(404).json({
+                    error: `NFL team ${teamAbv} not found`,
+                });
+            }
+        }
+
+        const where: Prisma.GameWhereInput = {
+            season,
+            ...(week !== undefined ? { week } : {}),
+            ...(selectedTeam 
+                ? {
+                    OR: [
+                        {
+                            homeTeamId: selectedTeam.id,
+                        },
+                        {
+                            awayTeamId: selectedTeam.id,
+                        },
+                    ],
+                }
+            : {}),
+        };
+
         const games = await prisma.game.findMany({
-            where: {
-                season,
-                ...(week !== undefined ? { week } : {}),
-            },
+            where,
             include: {
-                awayTeam: { select: { id: true, name: true, abbr: true } },
-                homeTeam: { select: { id: true, name: true, abbr: true } },
+                awayTeam: { select: { id: true, name: true, abbr: true, logoUrl: true, } },
+                homeTeam: { select: { id: true, name: true, abbr: true, logoUrl: true, } },
             },
-            orderBy: [{ week: "asc" }, { startTime: "asc" }],
+            orderBy: [{ week: "asc" }, { startTime: { sort: "asc", nulls: "last", },  }, ],
         });
 
         res.json(games);

@@ -444,17 +444,33 @@ export async function getNflTeams(): Promise<{ items: NflTeam[] }> {
     return (await res.json()) as { items: NflTeam[] };
 }
 
+export type ScheduleTeam = {
+    id: number;
+    name: string;
+    abbr: string;
+    logoUrl: string | null;
+};
+
 export type Game = {
-    week: number;
+    id: number;
     season: number;
+    week: number;
     startTime: string | null;
-    homeTeam: { abbr: string };
-    awayTeam: { abbr: string };
+    venue: string | null;
+    status: string;
+    isFlexed: boolean;
+    externalGameId: string | null;
+    externalSrc: string | null;
+    homeTeamId: number;
+    awayTeamId: number;
+    homeTeam: ScheduleTeam;
+    awayTeam: ScheduleTeam;
 }
 
 export async function getSchedule(params: { 
     season: number | string;
     week?: number | string; 
+    teamAbv?: string;
 }) {
     const url = new URL(`${API_BASE_URL}/nfl/schedule`);
 
@@ -472,6 +488,17 @@ export async function getSchedule(params: {
             String(params.week)
         );
     }  
+
+    const teamAbv = params.teamAbv 
+        ?.trim()
+        .toUpperCase();
+
+    if (teamAbv) {
+        url.searchParams.set(
+            "teamAbv",
+            teamAbv
+        );
+    }
 
     const res = await fetch(url.toString(), { 
         credentials: "include", 
