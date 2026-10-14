@@ -321,6 +321,9 @@ model Game {
   status    String    @default("scheduled")
   isFlexed  Boolean   @default(false)
 
+  homeScore Int?
+  awayScore Int?
+
   // External mapping for Tank/ESPN/etc.
   externalGameId String? @unique
   externalSrc    String?

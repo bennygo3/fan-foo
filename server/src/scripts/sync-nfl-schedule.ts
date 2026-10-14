@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { prisma } from "../lib/prisma";
 import { tankGetSeasonSchedule } from "../routes/services/tank-call";
 
+// external response
 type TankGame = {
     away?: string;
     home?: string;
@@ -11,10 +12,13 @@ type TankGame = {
     gameTime_epoch?: string | number | null;
     gameStatus?: string;
     gameStatusCode?: string | number;
+    homePts?: string | number | null;
+    awayPts?: string | number | null;
     season?: string | number;
     seasonType?: string;
 };
 
+// app has parsed data and is approved for db use
 type NormalizedGame = {
     season: number;
     week: number;
@@ -22,6 +26,8 @@ type NormalizedGame = {
     home: string;
     startTime: Date | null;
     status: string;
+    homeScore: number | null;
+    awayScore: number | null;
     externalGameId: string;
 };
 
@@ -68,6 +74,28 @@ function parseStartTime(value: unknown): Date | null {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseScore(
+    value: unknown
+): number | null {
+    if (
+        value === null ||
+        value === undefined ||
+        (
+            typeof value === "string" && 
+            value.trim() === ""
+        )
+    ) {
+        return null;
+    }
+
+    const score = Number(value);
+
+    return Number.isInteger(score) &&
+        score >= 0
+        ? score 
+        : null;
+}
+
 function normalizeStatus(game: TankGame): string {
     switch (String(game.gameStatusCode ?? "")) {
         case "0":
@@ -111,6 +139,26 @@ function normalizeGame(
         );
     }
 
+    const parsedHomeScore = parseScore(
+        game.homePts
+    );
+
+    const parsedAwayScore = parseScore(
+        game.awayPts
+    );
+
+    const hasCompleteScore =
+        parsedHomeScore !== null &&
+        parsedAwayScore !== null;
+    
+    const homeScore = hasCompleteScore
+        ? parsedHomeScore
+        : null;
+    
+    const awayScore = hasCompleteScore
+        ? parsedAwayScore
+        : null;
+
     return {
         season: requestedSeason,
         week: parseWeek(game.gameWeek),
@@ -118,6 +166,8 @@ function normalizeGame(
         home,
         startTime: parseStartTime(game.gameTime_epoch),
         status: normalizeStatus(game),
+        homeScore,
+        awayScore,
         externalGameId,
     };
 }
@@ -171,6 +221,12 @@ function validateSchedule(games: NormalizedGame[]): void {
     }
 
     if (weeks.size !== 18) {
+        throw new Error(
+            `Expected 18 weeks, found ${weeks.size}`
+        );
+    }
+
+    if (teamGameCounts.size !== 32) {
         throw new Error(
             `Expected 32 teams, found ${teamGameCounts.size}`
         );
@@ -316,6 +372,15 @@ async function main() {
 
         const existing = existingByMatchup.get(key);
 
+        const scoreData =
+            game.homeScore !== null &&
+            game.awayScore !== null 
+                ? {
+                    homeScore: game.homeScore,
+                    awayScore: game.awayScore,
+                }
+            : {};
+
         const sharedData = {
             season,
             week: game.week,
@@ -335,6 +400,7 @@ async function main() {
                 },
                 data: {
                     ...sharedData,
+                    ...scoreData,
 
                     // do not erase a known time if Tank temporarily returns no kickoff time
                     startTime: game.startTime ?? existing.startTime,
@@ -349,6 +415,8 @@ async function main() {
                 ...sharedData,
                 startTime: game.startTime,
                 isFlexed: false,
+                homeScore: game.homeScore,
+                awayScore: game.awayScore,
             },
         });
     });
