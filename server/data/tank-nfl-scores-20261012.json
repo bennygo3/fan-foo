@@ -1,0 +1,45 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20261012_BUF@LAR": {
+      "away": "BUF",
+      "home": "LAR",
+      "teamIDAway": "4",
+      "teamIDHome": "19",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1791850500.0",
+      "gameID": "20261012_BUF@LAR",
+      "awayPts": "37",
+      "homePts": "34",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final/OT",
+        "gameClock": "",
+        "away": {
+          "Q1": "6",
+          "Q2": "7",
+          "Q3": "6",
+          "Q4": "15",
+          "OT": "3",
+          "teamID": "4",
+          "currentlyInPossession": "False",
+          "totalPts": "37",
+          "teamAbv": "BUF"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "7",
+          "Q4": "20",
+          "OT": "0",
+          "teamID": "19",
+          "currentlyInPossession": "False",
+          "totalPts": "34",
+          "teamAbv": "LAR"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

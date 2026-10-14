@@ -35,13 +35,65 @@ function formatKickoff(
     return kickoffFormatter.format(date);
 }
 
+function formatGameResult(
+    game: Game,
+    isHome: boolean
+): string {
+    const normalizedStatus = game.status
+        .trim()
+        .toLowerCase();
+
+    const isFinal =
+        normalizedStatus === "final" ||
+        normalizedStatus === "completed";
+
+    if (
+        !isFinal || 
+        game.homeScore == null ||
+        game.awayScore == null
+    ) {
+        return formatStatus(game.status);
+    }
+
+    const teamScore = isHome 
+        ? game.homeScore
+        : game.awayScore;
+
+    const opponentScore = isHome
+        ? game.awayScore
+        : game.homeScore;
+
+    const result =
+        teamScore > opponentScore
+            ? "W"
+            : teamScore < opponentScore
+                ? "L"
+                : "T";
+
+    return `${result} ${teamScore}-${opponentScore}`;
+}
+
 function formatStatus(status: string): string {
-    return status
-        .replaceAll("_", " ")
+    const normalized = status
+        .trim()
         .toLowerCase()
-        .replace(/\b\w/g, (letter) =>
-            letter.toUpperCase()
-        );
+        .replaceAll("_", " ");
+    
+    switch (normalized) {
+        case "final":
+        case "completed":
+            return "Final";
+        case "in progress":
+        case "live":
+            return "In Progress";
+        case "postponed":
+            return "Postponed";
+        case "suspended":
+            return "Suspended";
+        default:
+            return "Scheduled";
+
+    }
 }
 
 export default function NflSchedule() {
@@ -255,7 +307,7 @@ export default function NflSchedule() {
                                     Kickoff
                                 </th>
                                 <th scope="col">
-                                    Status
+                                    Result
                                 </th>
                             </tr>
                         </thead>
@@ -341,8 +393,9 @@ export default function NflSchedule() {
                                         </td>
 
                                         <td>
-                                            {formatStatus(
-                                                game.status
+                                            {formatGameResult(
+                                                game,
+                                                isHome
                                             )}
 
                                             {game.isFlexed 

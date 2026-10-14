@@ -120,17 +120,18 @@ export async function tankGetPlayersList(season: string = "2026") {
 
 export async function tankGetWeeklySchedule(
     week: string | number,
-    season: string
+    season: string | number
 ) {
     return tankHttp<any>({
-        url: `https://${RAPID_HOST}/getNFLGamesForWeek`,
+        // url: `https://${RAPID_HOST}/getNFLGamesForWeek`,
+        url: `https://${RAPID_HOST}` + `/getNFLGamesForWeek`,
         params: {
             week: String(week),
-            season,
+            season: String(season),
             seasonType: "reg",
-            retries: 0, // prevents a 2nd billable req if Tank returns a rate-limit or server error
         },
         timeoutMs: 20_000,
+        retries: 0, // prevents a 2nd billable req if Tank returns a rate-limit or server error
     });
 }
 
@@ -139,8 +140,33 @@ export function tankGetSeasonSchedule(
 ) {
     return tankGetWeeklySchedule(
         "all",
-        String(season)
+        season
     );
+}
+
+export async function tankGetScoresForDate(
+    gameDate: string
+) {
+    const normalizedDate = gameDate.trim();
+
+    if (!/^\d{8}$/.test(normalizedDate)) {
+        throw new Error(
+            "gameDate must use YYYYMMDD format"
+        );
+    }
+
+    return tankHttp<any>({
+        url: 
+            `https://${RAPID_HOST}` +
+            `/getNFLScoresOnly`,
+
+        params: {
+            gameDate: normalizedDate,
+        },
+
+        timeoutMs: 15_0000,
+        retries: 0,
+    });
 }
 
 export async function tankGetBoxScore(

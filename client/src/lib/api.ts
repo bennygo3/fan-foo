@@ -459,6 +459,8 @@ export type Game = {
     venue: string | null;
     status: string;
     isFlexed: boolean;
+    homeScore: number | null;
+    awayScore: number | null;
     externalGameId: string | null;
     externalSrc: string | null;
     homeTeamId: number;

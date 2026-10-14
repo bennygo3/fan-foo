@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20261008_TB@DAL": {
+      "away": "TB",
+      "home": "DAL",
+      "teamIDAway": "30",
+      "teamIDHome": "9",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1791504900.0",
+      "gameID": "20261008_TB@DAL",
+      "awayPts": "24",
+      "homePts": "16",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "17",
+          "Q4": "0",
+          "teamID": "30",
+          "currentlyInPossession": "False",
+          "totalPts": "24",
+          "teamAbv": "TB"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "3",
+          "Q3": "0",
+          "Q4": "6",
+          "teamID": "9",
+          "currentlyInPossession": "False",
+          "totalPts": "16",
+          "teamAbv": "DAL"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

@@ -17,6 +17,7 @@
     "migrate": "prisma migrate dev",
     "sync:players": "tsx src/scripts/sync-tank-players",
     "sync:schedule": "tsx src/scripts/sync-nfl-schedule.ts",
+    "sync:scores": "tsx src/scripts/sync-nfl-scores.ts",
     "studio": "prisma studio",
     "generate": "prisma generate"
   },
