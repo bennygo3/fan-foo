@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260928_PHI@CHI": {
+      "away": "PHI",
+      "home": "CHI",
+      "teamIDAway": "27",
+      "teamIDHome": "6",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1790640900.0",
+      "gameID": "20260928_PHI@CHI",
+      "awayPts": "7",
+      "homePts": "27",
+      "gameClock": "",
+      "lineScore": {
+        "gameClock": "",
+        "period": "Final",
+        "away": {
+          "teamAbv": "PHI",
+          "totalPts": "7",
+          "Q3": "0",
+          "Q4": "0",
+          "Q1": "0",
+          "teamID": "27",
+          "currentlyInPossession": "False",
+          "Q2": "7"
+        },
+        "home": {
+          "teamID": "6",
+          "Q4": "7",
+          "Q2": "3",
+          "totalPts": "27",
+          "currentlyInPossession": "False",
+          "Q1": "7",
+          "teamAbv": "CHI",
+          "Q3": "10"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260924_ATL@GB": {
+      "away": "ATL",
+      "home": "GB",
+      "teamIDAway": "2",
+      "teamIDHome": "12",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1790295300.0",
+      "gameID": "20260924_ATL@GB",
+      "awayPts": "35",
+      "homePts": "14",
+      "gameClock": "",
+      "lineScore": {
+        "away": {
+          "Q3": "7",
+          "currentlyInPossession": "False",
+          "Q2": "10",
+          "teamAbv": "ATL",
+          "totalPts": "35",
+          "Q4": "11",
+          "Q1": "7",
+          "teamID": "2"
+        },
+        "gameClock": "",
+        "home": {
+          "totalPts": "14",
+          "teamID": "12",
+          "currentlyInPossession": "False",
+          "Q1": "7",
+          "Q4": "7",
+          "Q3": "0",
+          "Q2": "0",
+          "teamAbv": "GB"
+        },
+        "period": "Final"
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

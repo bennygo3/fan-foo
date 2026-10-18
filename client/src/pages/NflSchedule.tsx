@@ -328,8 +328,17 @@ export default function NflSchedule() {
                                             <th scope="row">
                                                 {week}
                                             </th>
-                                            <td colSpan={4}>
-                                                Bye Week
+                                            <td colSpan={1}>
+                                                Bye Week 
+                                            </td>
+                                            <td colSpan={1}>
+                                                Bye Week 
+                                            </td>
+                                            <td colSpan={1}>
+                                                Bye Week 
+                                            </td>
+                                            <td colSpan={1}>
+                                                Bye Week 
                                             </td>
                                         </tr>
                                     );

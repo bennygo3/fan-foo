@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260910_SF@LAR": {
+      "away": "SF",
+      "home": "LAR",
+      "teamIDAway": "28",
+      "teamIDHome": "19",
+      "gameTime": "8:35p",
+      "gameTime_epoch": "1789086900.0",
+      "gameID": "20260910_SF@LAR",
+      "awayPts": "27",
+      "homePts": "7",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "3",
+          "Q2": "7",
+          "Q3": "7",
+          "Q4": "10",
+          "teamID": "28",
+          "currentlyInPossession": "False",
+          "totalPts": "27",
+          "teamAbv": "SF"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "0",
+          "Q4": "0",
+          "teamID": "19",
+          "currentlyInPossession": "False",
+          "totalPts": "7",
+          "teamAbv": "LAR"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

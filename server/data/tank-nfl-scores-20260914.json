@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260914_DEN@KC": {
+      "away": "DEN",
+      "home": "KC",
+      "teamIDAway": "10",
+      "teamIDHome": "16",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1789431300.0",
+      "gameID": "20260914_DEN@KC",
+      "awayPts": "10",
+      "homePts": "31",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "7",
+          "Q2": "0",
+          "Q3": "3",
+          "Q4": "0",
+          "teamID": "10",
+          "currentlyInPossession": "False",
+          "totalPts": "10",
+          "teamAbv": "DEN"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "7",
+          "Q3": "10",
+          "Q4": "7",
+          "teamID": "16",
+          "currentlyInPossession": "False",
+          "totalPts": "31",
+          "teamAbv": "KC"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20261005_ATL@NO": {
+      "away": "ATL",
+      "home": "NO",
+      "teamIDAway": "2",
+      "teamIDHome": "23",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1791245700.0",
+      "gameID": "20261005_ATL@NO",
+      "awayPts": "45",
+      "homePts": "24",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "14",
+          "Q2": "10",
+          "Q3": "7",
+          "Q4": "14",
+          "teamID": "2",
+          "currentlyInPossession": "False",
+          "totalPts": "45",
+          "teamAbv": "ATL"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "3",
+          "Q4": "14",
+          "teamID": "23",
+          "currentlyInPossession": "False",
+          "totalPts": "24",
+          "teamAbv": "NO"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

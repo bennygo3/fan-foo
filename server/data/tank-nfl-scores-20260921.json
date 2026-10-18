@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260921_NYG@LAR": {
+      "away": "NYG",
+      "home": "LAR",
+      "teamIDAway": "24",
+      "teamIDHome": "19",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1790036100.0",
+      "gameID": "20260921_NYG@LAR",
+      "awayPts": "6",
+      "homePts": "28",
+      "gameClock": "",
+      "lineScore": {
+        "gameClock": "",
+        "away": {
+          "totalPts": "6",
+          "teamAbv": "NYG",
+          "currentlyInPossession": "False",
+          "Q2": "3",
+          "Q4": "0",
+          "teamID": "24",
+          "Q3": "3",
+          "Q1": "0"
+        },
+        "period": "Final",
+        "home": {
+          "Q2": "7",
+          "Q4": "7",
+          "teamID": "19",
+          "Q1": "7",
+          "teamAbv": "LAR",
+          "currentlyInPossession": "False",
+          "Q3": "7",
+          "totalPts": "28"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

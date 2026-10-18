@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260909_NE@SEA": {
+      "away": "NE",
+      "home": "SEA",
+      "teamIDAway": "22",
+      "teamIDHome": "29",
+      "gameTime": "8:20p",
+      "gameTime_epoch": "1788999600.0",
+      "gameID": "20260909_NE@SEA",
+      "awayPts": "10",
+      "homePts": "13",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "3",
+          "Q4": "0",
+          "teamID": "22",
+          "currentlyInPossession": "False",
+          "totalPts": "10",
+          "teamAbv": "NE"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "0",
+          "Q3": "3",
+          "Q4": "10",
+          "teamID": "29",
+          "currentlyInPossession": "False",
+          "totalPts": "13",
+          "teamAbv": "SEA"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

@@ -1,0 +1,541 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260920_PIT@NE": {
+      "away": "PIT",
+      "home": "NE",
+      "teamIDAway": "26",
+      "teamIDHome": "22",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_PIT@NE",
+      "awayPts": "3",
+      "homePts": "20",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "3",
+          "Q3": "0",
+          "Q4": "0",
+          "teamID": "26",
+          "currentlyInPossession": "False",
+          "totalPts": "3",
+          "teamAbv": "PIT"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "3",
+          "Q3": "3",
+          "Q4": "7",
+          "teamID": "22",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "NE"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_LV@LAC": {
+      "away": "LV",
+      "home": "LAC",
+      "teamIDAway": "17",
+      "teamIDHome": "18",
+      "gameTime": "4:05p",
+      "gameTime_epoch": "1789934700.0",
+      "gameID": "20260920_LV@LAC",
+      "awayPts": "26",
+      "homePts": "14",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "10",
+          "Q3": "7",
+          "Q4": "9",
+          "teamID": "17",
+          "currentlyInPossession": "False",
+          "totalPts": "26",
+          "teamAbv": "LV"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "7",
+          "Q4": "0",
+          "teamID": "18",
+          "currentlyInPossession": "False",
+          "totalPts": "14",
+          "teamAbv": "LAC"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_JAX@DEN": {
+      "away": "JAX",
+      "home": "DEN",
+      "teamIDAway": "15",
+      "teamIDHome": "10",
+      "gameTime": "4:05p",
+      "gameTime_epoch": "1789934700.0",
+      "gameID": "20260920_JAX@DEN",
+      "awayPts": "13",
+      "homePts": "20",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "10",
+          "Q3": "3",
+          "Q4": "0",
+          "teamID": "15",
+          "currentlyInPossession": "False",
+          "totalPts": "13",
+          "teamAbv": "JAX"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "3",
+          "Q3": "3",
+          "Q4": "14",
+          "teamID": "10",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "DEN"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_WSH@DAL": {
+      "away": "WSH",
+      "home": "DAL",
+      "teamIDAway": "32",
+      "teamIDHome": "9",
+      "gameTime": "4:25p",
+      "gameTime_epoch": "1789935900.0",
+      "gameID": "20260920_WSH@DAL",
+      "awayPts": "20",
+      "homePts": "37",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "10",
+          "Q3": "3",
+          "Q4": "7",
+          "teamID": "32",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "WSH"
+        },
+        "home": {
+          "Q1": "10",
+          "Q2": "7",
+          "Q3": "10",
+          "Q4": "10",
+          "teamID": "9",
+          "currentlyInPossession": "False",
+          "totalPts": "37",
+          "teamAbv": "DAL"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_PHI@TEN": {
+      "away": "PHI",
+      "home": "TEN",
+      "teamIDAway": "27",
+      "teamIDHome": "31",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_PHI@TEN",
+      "awayPts": "24",
+      "homePts": "20",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "14",
+          "Q3": "3",
+          "Q4": "7",
+          "teamID": "27",
+          "currentlyInPossession": "False",
+          "totalPts": "24",
+          "teamAbv": "PHI"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "3",
+          "Q3": "7",
+          "Q4": "3",
+          "teamID": "31",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "TEN"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_MIN@CHI": {
+      "away": "MIN",
+      "home": "CHI",
+      "teamIDAway": "21",
+      "teamIDHome": "6",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_MIN@CHI",
+      "awayPts": "9",
+      "homePts": "3",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "3",
+          "Q2": "3",
+          "Q3": "0",
+          "Q4": "3",
+          "teamID": "21",
+          "currentlyInPossession": "False",
+          "totalPts": "9",
+          "teamAbv": "MIN"
+        },
+        "home": {
+          "Q1": "3",
+          "Q2": "0",
+          "Q3": "0",
+          "Q4": "0",
+          "teamID": "6",
+          "currentlyInPossession": "False",
+          "totalPts": "3",
+          "teamAbv": "CHI"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_CIN@HOU": {
+      "away": "CIN",
+      "home": "HOU",
+      "teamIDAway": "7",
+      "teamIDHome": "13",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_CIN@HOU",
+      "awayPts": "20",
+      "homePts": "6",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "10",
+          "Q4": "3",
+          "teamID": "7",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "CIN"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "3",
+          "Q3": "3",
+          "Q4": "0",
+          "teamID": "13",
+          "currentlyInPossession": "False",
+          "totalPts": "6",
+          "teamAbv": "HOU"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_CAR@ATL": {
+      "away": "CAR",
+      "home": "ATL",
+      "teamIDAway": "5",
+      "teamIDHome": "2",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_CAR@ATL",
+      "awayPts": "34",
+      "homePts": "3",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "10",
+          "Q2": "10",
+          "Q3": "14",
+          "Q4": "0",
+          "teamID": "5",
+          "currentlyInPossession": "False",
+          "totalPts": "34",
+          "teamAbv": "CAR"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "3",
+          "Q3": "0",
+          "Q4": "0",
+          "teamID": "2",
+          "currentlyInPossession": "False",
+          "totalPts": "3",
+          "teamAbv": "ATL"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_CLE@TB": {
+      "away": "CLE",
+      "home": "TB",
+      "teamIDAway": "8",
+      "teamIDHome": "30",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_CLE@TB",
+      "awayPts": "23",
+      "homePts": "19",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "3",
+          "Q2": "3",
+          "Q3": "10",
+          "Q4": "7",
+          "teamID": "8",
+          "currentlyInPossession": "False",
+          "totalPts": "23",
+          "teamAbv": "CLE"
+        },
+        "home": {
+          "Q1": "6",
+          "Q2": "3",
+          "Q3": "7",
+          "Q4": "3",
+          "teamID": "30",
+          "currentlyInPossession": "False",
+          "totalPts": "19",
+          "teamAbv": "TB"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_MIA@SF": {
+      "away": "MIA",
+      "home": "SF",
+      "teamIDAway": "20",
+      "teamIDHome": "28",
+      "gameTime": "4:25p",
+      "gameTime_epoch": "1789935900.0",
+      "gameID": "20260920_MIA@SF",
+      "awayPts": "13",
+      "homePts": "35",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "6",
+          "Q3": "0",
+          "Q4": "7",
+          "teamID": "20",
+          "currentlyInPossession": "False",
+          "totalPts": "13",
+          "teamAbv": "MIA"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "7",
+          "Q3": "21",
+          "Q4": "0",
+          "teamID": "28",
+          "currentlyInPossession": "False",
+          "totalPts": "35",
+          "teamAbv": "SF"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_IND@KC": {
+      "away": "IND",
+      "home": "KC",
+      "teamIDAway": "14",
+      "teamIDHome": "16",
+      "gameTime": "8:20p",
+      "gameTime_epoch": "1789950000.0",
+      "gameID": "20260920_IND@KC",
+      "awayPts": "30",
+      "homePts": "33",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final/OT",
+        "gameClock": "",
+        "away": {
+          "Q1": "7",
+          "Q2": "13",
+          "Q3": "0",
+          "Q4": "7",
+          "OT": "3",
+          "teamID": "14",
+          "currentlyInPossession": "False",
+          "totalPts": "30",
+          "teamAbv": "IND"
+        },
+        "home": {
+          "Q1": "10",
+          "Q2": "7",
+          "Q3": "7",
+          "Q4": "3",
+          "OT": "6",
+          "teamID": "16",
+          "currentlyInPossession": "False",
+          "totalPts": "33",
+          "teamAbv": "KC"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_SEA@ARI": {
+      "away": "SEA",
+      "home": "ARI",
+      "teamIDAway": "29",
+      "teamIDHome": "1",
+      "gameTime": "4:25p",
+      "gameTime_epoch": "1789935900.0",
+      "gameID": "20260920_SEA@ARI",
+      "awayPts": "31",
+      "homePts": "7",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "7",
+          "Q2": "0",
+          "Q3": "10",
+          "Q4": "14",
+          "teamID": "29",
+          "currentlyInPossession": "False",
+          "totalPts": "31",
+          "teamAbv": "SEA"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "0",
+          "Q4": "0",
+          "teamID": "1",
+          "currentlyInPossession": "False",
+          "totalPts": "7",
+          "teamAbv": "ARI"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_NO@BAL": {
+      "away": "NO",
+      "home": "BAL",
+      "teamIDAway": "23",
+      "teamIDHome": "3",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_NO@BAL",
+      "awayPts": "24",
+      "homePts": "17",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "6",
+          "Q3": "3",
+          "Q4": "15",
+          "teamID": "23",
+          "currentlyInPossession": "False",
+          "totalPts": "24",
+          "teamAbv": "NO"
+        },
+        "home": {
+          "Q1": "7",
+          "Q2": "7",
+          "Q3": "3",
+          "Q4": "0",
+          "teamID": "3",
+          "currentlyInPossession": "False",
+          "totalPts": "17",
+          "teamAbv": "BAL"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    },
+    "20260920_GB@NYJ": {
+      "away": "GB",
+      "home": "NYJ",
+      "teamIDAway": "12",
+      "teamIDHome": "25",
+      "gameTime": "1:00p",
+      "gameTime_epoch": "1789923600.0",
+      "gameID": "20260920_GB@NYJ",
+      "awayPts": "20",
+      "homePts": "17",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final/OT",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "0",
+          "Q4": "10",
+          "OT": "3",
+          "teamID": "12",
+          "currentlyInPossession": "False",
+          "totalPts": "20",
+          "teamAbv": "GB"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "7",
+          "Q3": "7",
+          "Q4": "3",
+          "OT": "0",
+          "teamID": "25",
+          "currentlyInPossession": "False",
+          "totalPts": "17",
+          "teamAbv": "NYJ"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

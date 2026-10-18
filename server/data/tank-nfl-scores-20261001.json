@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20261001_PIT@CLE": {
+      "away": "PIT",
+      "home": "CLE",
+      "teamIDAway": "26",
+      "teamIDHome": "8",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1790900100.0",
+      "gameID": "20261001_PIT@CLE",
+      "awayPts": "24",
+      "homePts": "27",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "7",
+          "Q2": "3",
+          "Q3": "0",
+          "Q4": "14",
+          "teamID": "26",
+          "currentlyInPossession": "False",
+          "totalPts": "24",
+          "teamAbv": "PIT"
+        },
+        "home": {
+          "Q1": "0",
+          "Q2": "21",
+          "Q3": "0",
+          "Q4": "6",
+          "teamID": "8",
+          "currentlyInPossession": "False",
+          "totalPts": "27",
+          "teamAbv": "CLE"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}

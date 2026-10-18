@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "body": {
+    "20260917_DET@BUF": {
+      "away": "DET",
+      "home": "BUF",
+      "teamIDAway": "11",
+      "teamIDHome": "4",
+      "gameTime": "8:15p",
+      "gameTime_epoch": "1789690500.0",
+      "gameID": "20260917_DET@BUF",
+      "awayPts": "31",
+      "homePts": "41",
+      "gameClock": "",
+      "lineScore": {
+        "period": "Final",
+        "gameClock": "",
+        "away": {
+          "Q1": "0",
+          "Q2": "10",
+          "Q3": "7",
+          "Q4": "14",
+          "teamID": "11",
+          "currentlyInPossession": "False",
+          "totalPts": "31",
+          "teamAbv": "DET"
+        },
+        "home": {
+          "Q1": "14",
+          "Q2": "13",
+          "Q3": "7",
+          "Q4": "7",
+          "teamID": "4",
+          "currentlyInPossession": "False",
+          "totalPts": "41",
+          "teamAbv": "BUF"
+        }
+      },
+      "gameStatus": "Completed",
+      "gameStatusCode": "2"
+    }
+  }
+}
